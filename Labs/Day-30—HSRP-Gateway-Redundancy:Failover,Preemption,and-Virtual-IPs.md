@@ -1,4 +1,4 @@
-# Day 29 — HSRP Gateway Redundancy: Failover, Preemption, and Virtual IPs
+# Day 30 — HSRP Gateway Redundancy: Failover, Preemption, and Virtual IPs
 
 ## Overview
 
