@@ -1,4 +1,4 @@
-# Day 27 - OSPF Troubleshooting: Serial Links, Neighbor Failures, and Missing Routes
+# Day 28 - OSPF Troubleshooting: Serial Links, Neighbor Failures, and Missing Routes
 
 ## Overview
 
