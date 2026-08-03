@@ -101,11 +101,39 @@ Throughout this journey, I will be working through Jeremy's IT Lab CCNA course w
 | Day 20 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-20-Analyzing-STP%3APort-Roles-Across-Four-Switches.md">Analyzing STP: Port Roles Across Four Switches</a> | ✅ Complete   |
 | Day 21 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-21-Configuring-Spanning-Tree.md">Configuring Spanning Tree</a> | ✅ Complete   |
 | Day 22 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-22-RSTP%3ARoot-Bridge-Behavior-and-Link-Types.md">Root Bridge Behavior and Link Types</a> | ✅ Complete   |
+| Day 23 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-23-EtherChannel%3ALACP%2CPAgP%2CStatic%2C-and-Load-Balancing.md">EtherChannel: LACP, PAgP, Static, and Load Balancing</a> | ✅ Complete   |
+| Day 24 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-24-Floating-Static-Routes-and-Failover-Testing.md">Floating Static Routes and Failover Testing</a> | ✅ Complete   |
+| Day 25 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-25-EIGRP-Multi-Autonomous%20System%2C%20Auto-Summary%2C%20and%20Unequal-Cost-Load-Balancing.md">EIGRP Multi-Autonomous System, Auto-Summary, and Unequal-Cost Load Balancing</a> | ✅ Complete   |
+| Day 26 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-26-OSPF-ASBR-Default-Route-Injection-and-Passive-Interface-Design.md">OSPF ASBR Default Route Injection and Passive Interface Design</a> | ✅ Complete   |
+| Day 27 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-27-OSPF-Reference-Bandwidth%2CHello-Protocol%2Cand-ASBR-Default-Route-Injection.md">OSPF Reference Bandwidth, Hello Protocol, and ASBR Default Route Injection</a> | ✅ Complete   |
+| Day 28 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-28-OSPF-Troubleshooting%3ASerial-Links%2CNeighbor-Failures%2Cand-Missing-Route.md">OSPF Troubleshooting: Serial Links, Neighbor Failures, and Missing Routes</a> | ✅ Complete   |
+| Day 29 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-29-OSPF-Reference-Bandwidth%2CHello-Protocol%2Cand-ASBR-Default-Route-Injection.md">OSPF Reference Bandwidth, Hello Protocol, and ASBR Default Route Injection</a> | ✅ Complete   |
+| Day 30 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-30%E2%80%94HSRP-Gateway-Redundancy%3AFailover%2CPreemption%2Cand-Virtual-IPs.md">HSRP Gateway Redundancy: Failover, Preemption, and Virtual IPs</a> | ✅ Complete   |
+| Day 31 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-31%E2%80%94IPv6-Dual-Stack-Configuration-on-a-Multi-LAN-Router.md">IPv6 Dual-Stack Configuration on a Multi-LAN Router</a> | ✅ Complete   |
+| Day 32 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-32%20%E2%80%94IPv6-Addressing%3AEUI-64%2CLink-Local%2Cand-Static-Routes.md">IPv6 Addressing: EUI-64, Link-Local, and Static Routes</a> | ✅ Complete   |
+| Day 33 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-33%20Lab-IPv6-Static-Routes.md">IPv6 Static Routes, SLAAC, and Backup Paths</a> | ✅ Complete   |
+| Day 34 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-34-Lab-Standard-ACLs.md">OSPF Routing with Standard ACLs: Policy Enforcement</a> | ✅ Complete   |
+| Day 35 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-35%E2%80%94Extended-ACLs%3ADestination-and-Port-Based-Filtering.md">Extended ACLs: Destination and Port-Based Filtering</a> | ✅ Complete   |
+| Day 36 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-36-Lab-CDP-%26-LLDP.md">Network Discovery: CDP and LLDP</a> | ✅ Complete   |
+| Day 37 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-37%E2%80%94NTP%3ANetwork-Time-Synchronization.md">NTP: Network Time Synchronization</a> | ✅ Complete   |
+| Day 38 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-38%E2%80%94DNS-Configuration-and-Name-Resolution.md">DNS Configuration and Name Resolution</a> | ✅ Complete   |
+| Day 39 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-39%E2%80%94DHCP-Server%2CDHCP-Client%2Cand-DHCP-Relay.md">DHCP Server, DHCP Client, and DHCP Relay</a> | ✅ Complete   |
 | Day x | <a href="TBD"></a> | TBD   |
 | Day x | <a href="TBD"></a> | TBD   |
 | Day x | <a href="TBD"></a> | TBD   |
 | Day x | <a href="TBD"></a> | TBD   |
 | Day x | <a href="TBD"></a> | TBD   |
+| Day x | <a href="TBD"></a> | TBD   |
+| Day x | <a href="TBD"></a> | TBD   |
+| Day x | <a href="TBD"></a> | TBD   |
+| Day x | <a href="TBD"></a> | TBD   |
+| Day x | <a href="TBD"></a> | TBD   |
+| Day x | <a href="TBD"></a> | TBD   |
+| Day x | <a href="TBD"></a> | TBD   |
+| Day x | <a href="TBD"></a> | TBD   |
+| Day x | <a href="TBD"></a> | TBD   |
+| Day x | <a href="TBD"></a> | TBD   |
+
 
 ---
 
