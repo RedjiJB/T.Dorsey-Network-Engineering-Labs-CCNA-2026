@@ -150,7 +150,7 @@ SW2(config)#ip default-gateway 192.168.2.254
 R2's G0/1 interface at `192.168.2.254` serves as SW2's default gateway.
 
 <p align="center">
-  <img src="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Lab-Photos/Day-42-Lab-SSH-1.1.png" alt="SW2 Management SVI Configuration" width="1000">
+  <img src="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Lab-Photos/Day-42-Lab-SSH-1.1.png" width="1000">
 </p>
 
 ---
