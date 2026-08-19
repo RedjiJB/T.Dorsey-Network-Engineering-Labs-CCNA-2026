@@ -1,4 +1,4 @@
-# Commit: Day 50 Complete — DHCP Snooping
+Day 50 Complete — DHCP Snooping
 
 **Status:** ✅ Complete  
 **Lab:** Jeremy's IT Lab — Day 50  
