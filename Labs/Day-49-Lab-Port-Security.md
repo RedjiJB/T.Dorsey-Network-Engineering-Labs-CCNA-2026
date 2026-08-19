@@ -1,4 +1,4 @@
-# Commit: Day 49 Complete — Port Security
+Day 49 Complete — Port Security
 
 **Status:** ✅ Complete  
 **Lab:** Jeremy's IT Lab — Day 49  
