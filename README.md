@@ -131,7 +131,7 @@ Throughout this journey, I will be working through Jeremy's IT Lab CCNA course w
 | Day 51 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-51-Lab%20-Dynamic-ARP-Inspection.md">Day 51 Complete — Dynamic ARP Inspection (DAI)</a> | ✅ Complete   |
 | Day 52 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-52-Lab-STP-%26-HSRP-Synchronization.md">STP & HSRP Synchronization</a> | ✅ Complete   |
 | Day 53 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-53-Lab-GRE-Tunnels.md">GRE Tunnels</a> | ✅ Complete   |
-| Day 58 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-58-Lab-Wireless-LANs.md"></a> | ✅ Complete   |
+| Day 58 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-58-Lab-Wireless-LANs.md">Wireless LANs & WLC Configuration</a> | ✅ Complete   |
 | Day 63 | <a href="TBD">Mega-Lab</a> | TBD   |
 
 
