@@ -1,4 +1,4 @@
-# Commit: Day 58 Complete — Wireless LANs & WLC Configuration
+# Day 58 Complete — Wireless LANs & WLC Configuration
 
 **Status:** ✅ Complete  
 **Lab:** Jeremy's IT Lab — Day 58  
