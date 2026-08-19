@@ -118,21 +118,21 @@ Throughout this journey, I will be working through Jeremy's IT Lab CCNA course w
 | Day 37 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-37%E2%80%94NTP%3ANetwork-Time-Synchronization.md">NTP: Network Time Synchronization</a> | ✅ Complete   |
 | Day 38 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-38%E2%80%94DNS-Configuration-and-Name-Resolution.md">DNS Configuration and Name Resolution</a> | ✅ Complete   |
 | Day 39 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-39%E2%80%94DHCP-Server%2CDHCP-Client%2Cand-DHCP-Relay.md">DHCP Server, DHCP Client, and DHCP Relay</a> | ✅ Complete   |
-| Day x | <a href="TBD"></a> | TBD   |
-| Day x | <a href="TBD"></a> | TBD   |
-| Day x | <a href="TBD"></a> | TBD   |
-| Day x | <a href="TBD"></a> | TBD   |
-| Day x | <a href="TBD"></a> | TBD   |
-| Day x | <a href="TBD"></a> | TBD   |
-| Day x | <a href="TBD"></a> | TBD   |
-| Day x | <a href="TBD"></a> | TBD   |
-| Day x | <a href="TBD"></a> | TBD   |
-| Day x | <a href="TBD"></a> | TBD   |
-| Day x | <a href="TBD"></a> | TBD   |
-| Day x | <a href="TBD"></a> | TBD   |
-| Day x | <a href="TBD"></a> | TBD   |
-| Day x | <a href="TBD"></a> | TBD   |
-| Day x | <a href="TBD"></a> | TBD   |
+| Day 40 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-40%E2%80%94SNMP-Fundamentals%2CMIB-Queries%2Cand-Remote-Device-Management.md">SNMP Fundamentals, MIB Queries, and Remote Device Management</a> | ✅ Complete   |
+| Day 41 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-41%E2%80%94Syslog-Configuration%2CLogging-Destinations%2Cand%20Remote-Device-Monitoring.md">Syslog Configuration and Centralized Network Logging</a> | ✅ Complete   |
+| Day 42 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-42%20%E2%80%94%20SSH%3ASecure-Remote-Access-%26-Management.md">SSH: Secure Remote Access & Management</a> | ✅ Complete   |
+| Day 43 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-43-Lab-FTP-%26-TFTP.md">FTP & TFTP: Cisco IOS File Transfer & Upgrade</a> | ✅ Complete   |
+| Day 44 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-44-Lab-Static-NAT.md">Static NAT</a> | ✅ Complete   |
+| Day 45 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-45-Lab-Dynamic-NAT.md">Dynamic NAT & PAT</a> | ✅ Complete   |
+| Day 46 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-46-Lab-Voice-VLANs.md">Voice VLANs & Router-on-a-Stick (ROAS)</a> | ✅ Complete   |
+| Day 47 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-47-Lab-QoS.md">Quality of Service (QoS), DSCP Marking & Traffic Classification</a> | ✅ Complete   |
+| Day 49 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-49-Lab-Port-Security.md">Day 49 Complete — Port Security</a> | ✅ Complete   |
+| Day 50 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-50-Lab-DHCP-Snooping.md">DHCP Snooping</a> | ✅ Complete   |
+| Day 51 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-51-Lab%20-Dynamic-ARP-Inspection.md">Day 51 Complete — Dynamic ARP Inspection (DAI)</a> | ✅ Complete   |
+| Day 52 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-52-Lab-STP-%26-HSRP-Synchronization.md">STP & HSRP Synchronization</a> | ✅ Complete   |
+| Day 53 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-53-Lab-GRE-Tunnels.md">GRE Tunnels</a> | ✅ Complete   |
+| Day 58 | <a href="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Labs/Day-58-Lab-Wireless-LANs.md"></a> | ✅ Complete   |
+| Day 63 | <a href="TBD">Mega-Lab</a> | TBD   |
 
 
 ---
