@@ -1,4 +1,4 @@
-# Commit: Day 51 Complete — Dynamic ARP Inspection (DAI)
+# Day 51 Complete — Dynamic ARP Inspection (DAI)
 
 **Status:** ✅ Complete  
 **Lab:** Jeremy's IT Lab — Day 51  
