@@ -1,4 +1,4 @@
-# Commit: Day 53 Complete — GRE Tunnels
+# Day 53 Complete — GRE Tunnels
 
 **Status:** ✅ Complete  
 **Lab:** Jeremy's IT Lab — Day 53  
