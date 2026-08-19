@@ -1,4 +1,4 @@
-# Commit: Day 52 Complete — STP & HSRP Synchronization
+# Day 52 Complete — STP & HSRP Synchronization
 
 **Status:** ✅ Complete  
 **Lab:** Jeremy's IT Lab — Day 52  
