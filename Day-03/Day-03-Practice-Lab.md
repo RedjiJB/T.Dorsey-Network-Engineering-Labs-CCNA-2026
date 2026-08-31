@@ -1,436 +1,111 @@
-# Day 03 — Switch Fundamentals
+# Day 03 Practice Lab — OSI Model & DHCP Packet Analysis (Self-Guided)
 
-## Practice Lab: VLAN Configuration and MAC Learning
-
----
-
-## 1. Overview
-
-This practice lab guides you through VLAN configuration on all three switches (SW1, SW2, SW3) and verifies MAC address learning.
-
-**Format:** Hands-on configuration with step-by-step explanations  
-**Time:** 2–3 hours  
-**Prerequisite:** Day 01–02 completed; topology built
+No-answers companion to `Day-03-Lab-Manual.md`. Same brief and topology, but you derive the addressing, the relay configuration, and the OSI-layer mapping yourself.
 
 ---
 
-## 2. Hands-On Configuration
+## 0. Before You Start
 
-### 2.1 SW1 Configuration Walkthrough
-
-**Step 1:** Console into SW1
-
-```
-Switch> enable
-Switch# configure terminal
-Enter configuration commands, one per line.  End with CNTL/Z.
-Switch(config)#
-```
-
-**Step 2:** Create VLANs
-
-```
-Switch(config)# vlan 1
-Switch(config-vlan)# name Management
-Switch(config-vlan)# exit
-
-Switch(config)# vlan 10
-Switch(config-vlan)# name NY-Staff
-Switch(config-vlan)# exit
-
-! Verify VLANs created
-Switch(config)# exit
-Switch# show vlan brief
-
-VLAN Name                             Status    Ports
----- -------------------------------- --------- ----------------------------------
-1    Management                       active    
-10   NY-Staff                         active    
-1002 fddi-default                     act/unsup 
-1003 token-ring-default               act/unsup 
-1004 fddinet-default                  act/unsup 
-1005 trnet-default                    act/unsup 
-
-! VLAN 1 and 10 are active; legacy VLANs (1002–1005) can be ignored
-```
-
-**Step 3:** Create SVI for VLAN 10 (staff network)
-
-```
-Switch# configure terminal
-Switch(config)# interface vlan 10
-Switch(config-if)# ip address 192.168.10.2 255.255.255.0
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-! Verify SVI created
-Switch(config)# exit
-Switch# show ip interface brief | grep -i vlan
-
-Interface              IP-Address      OK? Method Status                Protocol
-Vlan1                  unassigned      YES manual down                  down
-Vlan10                 192.168.10.2    YES manual up                    up
-```
-
-**Why:** The SVI gives the switch an IP address so you can SSH/telnet to it for management.
-
-**Step 4:** Configure access ports (PC0, PC1)
-
-```
-Switch# configure terminal
-
-Switch(config)# interface FastEthernet0/2
-Switch(config-if)# switchport mode access
-Switch(config-if)# switchport access vlan 10
-Switch(config-if)# description PC0-Access
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-Switch(config)# interface FastEthernet0/3
-Switch(config-if)# switchport mode access
-Switch(config-if)# switchport access vlan 10
-Switch(config-if)# description PC1-Access
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-! Verify access ports
-Switch(config)# exit
-Switch# show interface switchport | grep -A 5 FastEthernet0/2
-
-Name              : Fa0/2
-Switchport        : Enabled
-Administrative Mode : static access
-Operational Mode  : static access
-Maximum MTU        : 1500
-Trunking Native Mode VLAN : 1
-Administrative Native VLAN tagging : enabled
-Administrative private-vlan host-association : none
-Switchport Access VLAN : 10
-Trunking Encapsulation : dot1q
-```
-
-**Why:** Access ports assign frames to a single VLAN. When PC0 sends a frame, SW1 adds VLAN tag (internal use); when SW1 sends frame to PC0, it removes the tag (PC0 sees untagged frame).
-
-**Step 5:** Configure trunk port (uplink to R1-NY)
-
-```
-Switch# configure terminal
-
-Switch(config)# interface GigabitEthernet0/1
-Switch(config-if)# switchport mode trunk
-Switch(config-if)# switchport trunk native vlan 1
-Switch(config-if)# switchport trunk allowed vlan 1,10
-Switch(config-if)# description Uplink-to-R1-NY
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-! Verify trunk configuration
-Switch(config)# exit
-Switch# show interface trunk
-
-Port        Mode         Encapsulation  Status        Native vlan
-Gi0/1       on           802.1q         trunking      1
-
-Port        Vlans allowed on trunk
-Gi0/1       1,10
-
-Port        Vlans allowed and active in management domain
-Gi0/1       1,10
-
-Port        Vlans in spanning tree forwarding state and not pruned
-Gi0/1       1,10
-```
-
-**Why:** Trunk ports carry multiple VLANs using 802.1Q tagging. Each frame is tagged with VLAN ID; receiving switch examines tag and processes accordingly.
-
-**Step 6:** Set default gateway
-
-```
-Switch# configure terminal
-Switch(config)# ip default-gateway 192.168.10.1
-Switch(config)# exit
-```
-
-**Why:** If a frame arrives for a subnet the switch doesn't know, it forwards to the default gateway (the router).
+| Field | Value |
+|---|---|
+| **Time budget** | 1.5–2.5 hours. |
+| **What you'll need** | Packet Tracer with Simulation Mode, a blank sheet for packet-field notes. |
 
 ---
 
-### 2.2 SW2 & SW3 Configuration (Similar Steps)
+## 1. The Brief
 
-**SW2:** Follow Step 1–6, but use VLAN 20 and 192.168.20.x addresses
+> PC1 needs to get its IP configuration automatically. The DHCP server, SRV1, sits two router hops away from PC1 — on the far side of R2, across a WAN link from R1. Design and build a topology that lets PC1 successfully obtain a lease from SRV1, and be ready to explain, layer by layer, what happens on the wire during that exchange.
 
-```
-Switch(config)# vlan 20
-Switch(config-vlan)# name Tokyo-Staff
+### Your task
 
-Switch(config)# interface vlan 20
-Switch(config-if)# ip address 192.168.20.2 255.255.255.0
-
-Switch(config)# interface FastEthernet0/2
-Switch(config-if)# switchport access vlan 20
-! ... (Fa0/3 also VLAN 20)
-
-Switch(config)# interface GigabitEthernet0/1
-Switch(config-if)# switchport trunk allowed vlan 1,20
-
-Switch(config)# ip default-gateway 192.168.20.1
-```
-
-**SW3:** Use VLAN 30 and 192.168.30.x addresses
-
-```
-Switch(config)# vlan 30
-Switch(config-vlan)# name Singapore-Staff
-
-Switch(config)# interface vlan 30
-Switch(config-if)# ip address 192.168.30.2 255.255.255.0
-
-Switch(config)# interface FastEthernet0/2
-Switch(config-if)# switchport access vlan 30
-! ... (Fa0/3 also VLAN 30)
-
-Switch(config)# interface GigabitEthernet0/1
-Switch(config-if)# switchport trunk allowed vlan 1,30
-
-Switch(config)# ip default-gateway 192.168.30.1
-```
+- [ ] Sketch the topology from the brief alone: how many routers, switches, and end devices, and how are they arranged?
+- [ ] Before building anything: state, in one sentence, why a DHCP Discover can't simply be routed like a normal unicast packet would be.
 
 ---
 
-## 3. MAC Address Verification
+## 2. Design Your Own IP Addressing Plan
 
-### 3.1 View Learned MACs on SW1
+**Constraints:**
 
-**Step 1:** Generate traffic (so switch learns MACs)
+- PC1's LAN needs a `/24` from private space, DHCP-assigned.
+- SRV1's segment needs a `/24` from private space (different from PC1's), statically assigned.
+- The R1–R2 WAN link needs the smallest subnet that fits exactly 2 hosts.
 
-```
-PC0# ping -c 10 192.168.10.51  ! Ping PC1 (same VLAN)
-! Generates ARP request/reply; SW1 learns both MACs
-```
+### Your task
 
-**Step 2:** Check MAC address table
+1. Choose the two `/24`s.
+2. For the WAN link, do the full `2^h − 2` derivation to find the correct host-bit count, prefix, and dotted-decimal mask — don't just recall `/30`, derive it.
+3. Write out the network, first host, last host, and broadcast address for your WAN subnet.
+4. Decide the DHCP pool's start address, range, and which addresses must be excluded (hint: think about what's already statically assigned on that subnet).
 
-```
-SW1# show mac-address-table
-
-          Mac Address Table
--------------------------------------------
-
-Vlan    Mac Address       Type        Ports
-----    -----------       --------    -----
-   1    0050.56ab.ce01    DYNAMIC     Gi0/1
-  10    0011.2233.4455    DYNAMIC     Fa0/2
-  10    0011.2233.4456    DYNAMIC     Fa0/3
-  10    0050.56ab.ce02    DYNAMIC     Gi0/1
-```
-
-**What you see:**
-- **VLAN 1:** MAC on trunk (Gi0/1) = R1-NY (management traffic)
-- **VLAN 10:** MACs on Fa0/2 (PC0), Fa0/3 (PC1), Gi0/1 (R1-NY)
-
-**Why:** When PC0 sends a frame, SW1 examines source MAC and associates it with port Fa0/2.
-
-### 3.2 MAC Address Aging Demonstration
-
-**Step 1:** Note current time
-
-```
-SW1# show clock
-```
-
-**Step 2:** View MAC aging time
-
-```
-SW1# show mac-address-table aging-time
-Current MAC address aging time: 300 seconds (5 minutes)
-```
-
-**Step 3:** Simulate device moved
-
-```
-! Disconnect PC0 from Fa0/2
-! Wait 5+ minutes (or manually clear entry: clear mac-address-table dynamic)
-! Entry disappears from MAC table
-```
-
-**Step 4:** Reconnect and verify new learning
-
-```
-PC0# ping 192.168.10.1  ! Generate traffic
-SW1# show mac-address-table | grep PC0  ! New entry appears
-```
-
-**Lesson:** MAC table entries are dynamic; they age out and are re-learned if traffic continues.
+Only compare against Section 4 of the full manual after finishing.
 
 ---
 
-## 4. Verification Tests
+## 3. Configure — Prompts Only
 
-### 4.1 Same-VLAN Connectivity
-
-**Test:** PC0 → PC1 (both on VLAN 10)
-
-```
-PC0# ping -c 4 192.168.10.51
-PING 192.168.10.51 (192.168.10.51) 56(84) bytes of data.
-64 bytes from 192.168.10.51: icmp_seq=1 ttl=64 time=2.123 ms
-64 bytes from 192.168.10.51: icmp_seq=2 ttl=64 time=1.987 ms
-64 bytes from 192.168.10.51: icmp_seq=3 ttl=64 time=2.045 ms
-64 bytes from 192.168.10.51: icmp_seq=4 ttl=64 time=2.034 ms
-
-! Expected: Ping succeeds (both on same VLAN 10)
-```
-
-**Why:** SW1 knows both MACs are on VLAN 10. When PC0 sends unicast to PC1, SW1 forwards frame directly to Fa0/3 (where PC1 is).
-
-### 4.2 Different-VLAN Connectivity (Should Fail)
-
-**Test:** PC0 (VLAN 10) → SRV1 (VLAN 20)
-
-```
-PC0# ping -c 4 192.168.20.10
-PING 192.168.20.10 (192.168.20.10) 56(84) bytes of data.
-
-! Timeout; no response (after ~5 seconds)
-! Expected: Ping fails (different VLANs, no inter-VLAN routing configured yet)
-```
-
-**Why:** SW1 doesn't have a route between VLAN 10 and VLAN 20. Devices on different VLANs can't communicate at Layer 2. **Solution:** Inter-VLAN routing (Day 07 content).
-
-### 4.3 Trunk Verification
-
-**Test:** Verify trunk link carries multiple VLANs
-
-```
-SW1# show interface GigabitEthernet0/1 switchport
-
-Name              : Gi0/1
-Switchport        : Enabled
-Administrative Mode : dynamic desirable
-Operational Mode  : static access
-Maximum MTU        : 1500
-Trunking Native Mode VLAN : 1
-Trunking Encapsulation : dot1q
-Trunking Native Mode VLAN tagging : enabled
-Operational private-vlan host-association : none
-
-! Wait, this shows "static access", not "trunk"!
-! Issue: Interface is not in trunk mode. Let me re-configure.
-
-SW1# configure terminal
-SW1(config)# interface GigabitEthernet0/1
-SW1(config-if)# switchport mode trunk
-SW1(config-if)# exit
-
-SW1# show interface GigabitEthernet0/1 switchport
-
-Operational Mode  : static access trunk
-Trunking Encapsulation : dot1q
-Allowed VLANs : 1,10
-Trunking Vlans Enabled : 1,10
-```
-
-**Now trunk is verified:** Interface carries both VLAN 1 and VLAN 10 traffic.
+- [ ] Configure R1 and R2's interfaces and static routes so each router can reach the other's LAN.
+- [ ] Configure SRV1 with a static IP (why must a DHCP server's own address never be DHCP-assigned?) and enable its DHCP service with the pool you designed in Part 2.
+- [ ] Set PC1 to obtain an address automatically.
+- [ ] Here's the key question this lab is built around: **routers do not forward broadcast traffic by default.** Given that DHCP Discover is a broadcast and SRV1 is two hops away, what single command, on which router, on which specific interface, solves this? Work it out before checking the manual — what does the command need to know (a destination address? an interface? both?) to do its job?
 
 ---
 
-## 5. Common Mistakes & Troubleshooting
+## 4. Capture and Analyze — Predict First
 
-### Mistake 1: Forgot to Create VLAN
+Using Packet Tracer's Simulation Mode, capture the DHCP exchange. Before inspecting each frame's contents, predict:
 
-**Symptom:** Assign port to VLAN, but `show vlan brief` doesn't show the port
+- [ ] What will the DHCP Discover's Layer 3 source IP be? (Not "whatever it's about to get" — think about what the client actually knows at that instant.)
+- [ ] What will the Layer 3 and Layer 2 destination addresses be, and why?
+- [ ] What UDP source and destination ports will appear, and which one belongs to the client vs. the server?
+- [ ] Name all four messages in the full exchange, in order, before checking anything. What does each one accomplish?
+- [ ] Why does the third message (the client's acceptance) stay broadcast instead of going straight to the server unicast, even though the client now knows exactly which server it's dealing with?
 
-```
-Switch(config)# interface Fa0/2
-Switch(config-if)# switchport access vlan 10
-Switch(config-if)# exit
-
-Switch# show vlan brief
-
-VLAN Name                             Status    Ports
----- -------------------------------- --------- ---------------------------------
-1    default                          active    Fa0/2
-10   ??? (not listed)                  (not listed)
-
-! Port Fa0/2 is still on VLAN 1!
-! Reason: VLAN 10 was never created.
-
-! Fix:
-Switch# configure terminal
-Switch(config)# vlan 10
-Switch(config-vlan)# name NY-Staff
-Switch(config-vlan)# exit
-
-Switch(config)# interface Fa0/2
-Switch(config-if)# switchport access vlan 10
-Switch(config-if)# exit
-
-Switch# show vlan brief
-10   NY-Staff                         active    Fa0/2
-```
-
-### Mistake 2: Trunk Port Not Carrying VLAN
-
-**Symptom:** Devices on VLAN 10 can't reach router (or vice versa)
-
-```
-Switch# show interface trunk
-
-Port        Vlans allowed on trunk
-Gi0/1       all
-
-! But VLAN 10 traffic doesn't cross trunk!
-! Reason: Allowed VLANs is "all", but check trunking status
-
-Switch# show interface Gi0/1 switchport
-
-Operational Mode  : static access  (NOT trunk!)
-```
-
-**Fix:**
-```
-Switch# configure terminal
-Switch(config)# interface Gi0/1
-Switch(config-if)# no switchport mode access  ! Remove access mode
-Switch(config-if)# switchport mode trunk  ! Set trunk mode
-Switch(config-if)# exit
-
-Switch# show interface trunk
-Port        Mode         Encapsulation  Status        Native vlan
-Gi0/1       on           802.1q         trunking      1
-```
+Now capture and compare against your predictions.
 
 ---
 
-## 6. Self-Check Checklist
+## 5. Map to the OSI Model
 
-- [ ] Created VLAN 10 on SW1, VLAN 20 on SW2, VLAN 30 on SW3
-- [ ] Assigned access ports to correct VLANs (Fa0/2–3 on each switch)
-- [ ] Created SVIs on each switch with correct IP addresses
-- [ ] Configured trunk ports (Gi0/1) on each switch with correct allowed VLANs
-- [ ] Set native VLAN to 1 on all trunks
-- [ ] Set default gateway on each switch
-- [ ] Verified `show vlan brief` shows all VLANs and ports
-- [ ] Verified MAC addresses learned on correct ports (use `show mac-address-table`)
-- [ ] Tested same-VLAN ping (PC0 ↔ PC1): succeeded
-- [ ] Tested different-VLAN ping (PC0 ↔ SRV1): failed (expected)
-- [ ] Verified trunk port carries multiple VLANs (use `show interface trunk`)
+Without looking at Section 6/7 of the full manual, fill in this table from what you captured:
 
-**Score:** 11/11 = Mastered Day 03 concepts
+| OSI Layer | What you observed in the capture |
+|---|---|
+| Layer 7 (Application) | ? |
+| Layer 4 (Transport) | ? |
+| Layer 3 (Network) | ? |
+| Layer 2 (Data Link) | ? |
+| Layer 1 (Physical) | ? (this one you can't directly "see" in Packet Tracer — explain why, and what it represents anyway) |
 
 ---
 
-## 7. Conclusion
+## 6. Explain Your Design
 
-You've configured VLANs and verified:
-- MAC address learning on access ports
-- VLAN isolation (same-VLAN communication works; different-VLAN fails)
-- Trunk port functionality (carries multiple VLANs)
-
-**Next:** Day 07 will show how to route **between** VLANs, enabling communication between PC0 (VLAN 10) and SRV1 (VLAN 20).
+1. In business terms, why does virtually every company run DHCP instead of statically assigning every device? Give at least 2 distinct business reasons, not just "it's easier."
+2. Why must a DHCP server always have a static IP address itself?
+3. What problem does `ip helper-address` (or your platform's equivalent) solve, specifically? What would you observe in Simulation Mode if it were missing or pointed at the wrong IP?
+4. Explain encapsulation and de-encapsulation in your own words, using the DHCP Offer packet as your example, including what happens to the Layer 2 header specifically as the packet crosses each router hop.
 
 ---
 
-**Practice Lab Documentation Version:** 1.0  
-**Last Updated:** 2026-08-30  
-**Time to Complete:** 2–3 hours
+## 7. Troubleshoot Yourself
+
+Break your lab 3 ways, diagnose with `show` commands and Simulation Mode only, then fix:
+
+- Remove the relay/helper command from R1.
+- Point the relay/helper command at the wrong IP address.
+- Misconfigure SRV1's DHCP pool to use the wrong subnet.
+- Leave PC1 set to Static instead of DHCP.
+
+---
+
+## 8. Self-Check
+
+- [ ] I derived the WAN subnet mask from binary by hand, not from memory.
+- [ ] I correctly predicted the DHCP Discover's source IP before capturing it.
+- [ ] I identified the relay/helper requirement before checking the manual.
+- [ ] I filled in the OSI-layer mapping table before checking Section 7.
+- [ ] I broke and fixed at least 3 things using only diagnostic commands and Simulation Mode.
+
+Once done, open `Day-03-Lab-Manual.md` and diff your work against Sections 4, 6, 7, and 9.

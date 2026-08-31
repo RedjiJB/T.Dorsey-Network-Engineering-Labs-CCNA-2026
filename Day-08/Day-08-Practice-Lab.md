@@ -1,113 +1,89 @@
-# Day 08 — Spanning Tree Protocol
+# Day 08 Practice Lab — IPv4 Address Configuration & Router Interface Setup (Self-Guided)
 
-## Practice Lab: STP Configuration & Failover Testing
-
----
-
-## 1. Verify STP is Enabled
-
-**On all switches (SW1, SW2, SW3):**
-```
-Switch# show spanning-tree
-
-VLAN0001
-  Spanning tree enabled protocol ieee
-  Root ID    Priority    32768
-             Address     aabb.cc00.0001
-  ...
-```
-
-**Expected:** All switches show STP enabled (default)
+No-answers companion to `Day-08-Lab-Manual.md`. Same brief and topology; you derive the addressing math yourself.
 
 ---
 
-## 2. Set Root Bridge
+## 0. Before You Start
 
-**On SW1 (desired root):**
-```
-SW1(config)# spanning-tree vlan 1 priority 4096
-! Priority 4096 is lowest; SW1 becomes root
-
-SW1# write memory
-```
-
-**Verify root election:**
-```
-SW1# show spanning-tree | grep "Root ID"
-Root ID    Priority    4096
-           Address     aabb.cc00.0001
-           This bridge is the root
-
-SW2# show spanning-tree | grep "Root ID"
-Root ID    Priority    4096
-           Address     aabb.cc00.0001
-           Root Port   Gi0/1
-! SW2 recognizes SW1 as root; root port is Gi0/1
-```
+| Field | Value |
+|---|---|
+| **Time budget** | 2 hours. |
+| **What you'll need** | Packet Tracer, pencil/spreadsheet. No subnet calculator. |
 
 ---
 
-## 3. Identify Blocked Port
+## 1. The Brief
 
-**On SW3:**
-```
-SW3# show spanning-tree
+> One Cisco router connects three completely separate networks, one per interface: a `/8`, a `/16`, and a `/24`. One PC and one switch sit on each network. Every PC needs to reach every other PC through the router.
 
-Interface           Role Sts Cost      Prio.Nbr Type
--------------- --------- --- --------- -------- ----
-Gi0/1          Root FWD  4    128.1    P2p     ! Forward
-Gi0/2          Altn BLK  4    128.2    P2p     ! Blocked (redundant)
-```
+### Your task
 
-**Expected:** One port is BLK (Alternate/Blocked); redundant link is disabled
+- [ ] Sketch the topology from the brief alone.
+- [ ] Before calculating anything: which of the three networks has the most usable host addresses? Which has the fewest? Answer from the prefix lengths alone, before doing any math — does a smaller number after the slash mean more hosts or fewer? Explain why.
 
 ---
 
-## 4. Failover Testing
+## 2. Derive the Addressing Math Yourself
 
-**Simulate link failure (on SW1):**
-```
-SW1(config)# interface Gi0/2
-SW1(config-if)# shutdown
-! Link to SW3 is down
+You are given only the three network addresses: `15.0.0.0/8`, `182.98.0.0/16`, `201.191.20.0/24`. Do all of the following by hand:
 
-! Wait 30–50 seconds (STP convergence)
+1. For each network, state the number of host bits.
+2. For each, calculate usable hosts using `2^h − 2`.
+3. For each, derive the dotted-decimal subnet mask from binary — write out all 32 bits, then convert each octet.
+4. For each, calculate the network address, first usable host, last usable host, and broadcast address.
+5. Choose a gateway address for each network (any valid usable host address — it does not have to be `.1`) and a PC address (a different valid usable host address).
 
-SW3# show spanning-tree
-
-Interface           Role Sts Cost      Prio.Nbr Type
--------------- --------- --- --------- -------- ----
-Gi0/1          Root FWD  4    128.1    P2p
-Gi0/2          Desg FWD  4    128.2    P2p     ! NOW FORWARDING!
-! Blocked port automatically unblocks
-```
-
-**Verify connectivity (no service interruption):**
-```
-PC0# ping -c 20 192.168.20.10
-! Pings continue through the failover
-! Expect 2–3 lost packets during 30–50 second convergence window
-```
-
-**Restore link:**
-```
-SW1(config)# interface Gi0/2
-SW1(config-if)# no shutdown
-! Link restored; STP re-converges
-```
+Only after finishing all 5 steps, compare against Section 4 of the full manual. If your masks and ranges are mathematically correct but you chose different specific host addresses than the manual, that's fine.
 
 ---
 
-## 5. Checklist
+## 3. Configure — Prompts Only
 
-- [ ] STP enabled on all 3 switches
-- [ ] SW1 is root (priority 4096)
-- [ ] SW2, SW3 show root port (forwarding)
-- [ ] One link is blocked (BLK state)
-- [ ] Failover causes blocked port to unblock (FWD)
-- [ ] Connectivity survives failover (transparent)
-- [ ] Convergence time < 60 seconds
+- [ ] Hostname the router.
+- [ ] Before configuring anything, run the command that shows interface status with the `do` shortcut from Global Config mode — what does `do` let you avoid doing?
+- [ ] Configure all 3 router interfaces with your Part 2 addressing. Remember: IOS's `ip address` command wants which mask format — CIDR slash notation, or the expanded dotted-decimal form? Get this wrong once on purpose and see what IOS says.
+- [ ] Bring each interface up.
+- [ ] Save.
+- [ ] Configure all 3 PCs with static IP/mask/gateway matching your plan.
 
 ---
 
-**Practice Lab Version:** 1.0
+## 4. Verify — Predict First
+
+- [ ] Predict `show ip interface brief` output before running it.
+- [ ] Predict `show ip route` output before running it. Specifically: will you need to configure any static routes for full connectivity in this topology? Why or why not — think about what "directly connected" means for a router interface with a valid, up IP address.
+- [ ] Predict, then test, a full ping matrix across all 3 PCs.
+- [ ] On a successful cross-network ping, look at the TTL value in the reply. What does it tell you about how many router hops the packet crossed?
+
+---
+
+## 5. Explain Your Design
+
+1. Why does a network with a smaller prefix number (like `/8`) have *more* usable hosts than one with a larger prefix number (like `/24`)? Explain the relationship between prefix length and host bits.
+2. Why did this lab need zero static routes, when earlier labs in this course needed several?
+3. In a real company, what kind of situation would actually produce a `/8` sitting next to a `/24` on the same router, the way this lab's topology does?
+4. Why does IOS's `ip address` command require the expanded mask instead of accepting CIDR notation directly?
+
+---
+
+## 6. Troubleshoot Yourself
+
+Break your lab in 3 of these ways, diagnose with `show` commands only, then fix:
+
+- Assign a PC the wrong mask (matching a different network's prefix than the one it's actually on).
+- Skip `no shutdown` on one router interface.
+- Type an IP address on a router interface that's outside the intended network's valid range.
+- Point a PC's default gateway at the wrong interface's IP.
+
+---
+
+## 7. Self-Check
+
+- [ ] I derived all three subnet masks from binary by hand, without a calculator.
+- [ ] I correctly predicted that no static routes would be needed, and explained why.
+- [ ] I correctly interpreted a ping's TTL value as evidence of hop count.
+- [ ] I could explain the prefix-length-to-host-count relationship without notes.
+- [ ] I broke and fixed at least 3 things using only diagnostic commands.
+
+Once done, open `Day-08-Lab-Manual.md` and diff your work against Sections 4, 6, 7, and 9.

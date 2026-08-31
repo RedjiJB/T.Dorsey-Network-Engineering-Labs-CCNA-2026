@@ -1,6 +1,4 @@
-# Day 03 — Switch Fundamentals
-
-## Lab Manual: MAC Learning, VLAN Basics, and Switch Configuration
+# Day 03 Lab Manual — OSI Model & DHCP Packet Analysis
 
 ---
 
@@ -8,452 +6,383 @@
 
 | Field | Value |
 |---|---|
-| **Lab Title** | Switch Fundamentals |
-| **Day** | Day 03 (Layer 2 Switching) |
-| **Topic Focus** | MAC address learning, VLAN configuration, trunk/access ports, SVI (Switch Virtual Interfaces) |
-| **Estimated Time** | 3–4 hours |
-| **Difficulty** | Intermediate |
-| **Prerequisites** | Complete Day 01–02 (understand routing basics) |
-| **Lab Scope** | Three switches (SW1, SW2, SW3); VLANs 1, 10, 20, 30; trunk/access port configuration; MAC address table management |
-| **Skills Practiced** | VLAN creation, port assignment, trunk configuration, MAC learning verification, spanning tree basics |
-| **Standards Referenced** | RFC 2544 (Benchmarking Methodology), 802.1Q (VLAN Tagging), 802.1D (Bridge/Switch Standards) |
-| **Expected Outcome** | All three switches properly segment traffic by VLAN; MAC address table populated correctly; inter-VLAN routing blocked by default (Layer 2 only) |
+| **Objective** | Build a small routed topology with a DHCP server, capture and dissect the DHCP Discover/Offer/Request/Ack (DORA) exchange in Packet Tracer Simulation Mode, and map each observed field back to its OSI layer. |
+| **Exam Relevance** | CCNA 200-301 — Domain 1 (Network Fundamentals): 1.4 (OSI/TCP-IP model comparison), 1.5 (encapsulation). Domain 4 (IP Connectivity): DHCP operation and relay concepts appear directly on the exam blueprint. |
+| **Prerequisites** | Day 01–02 (device roles, cabling, basic addressing). Comfort reading a table of layer names top-to-bottom or bottom-to-top. |
+| **Time Estimate** | 1.5 – 2 hours. |
+| **Difficulty** | ⭐☆☆☆☆ (Beginner) — no hard configuration, but the DORA sequence and the "why broadcast" reasoning trip up a lot of first-time students on the exam. |
 
 ---
 
-## 1. Overview
+## 1. Lab Overview
 
-This lab shifts focus from **Layer 3 (Routing)** to **Layer 2 (Switching)**. You'll learn:
+This lab uses a client-server DHCP exchange as a lens for understanding the OSI model — not as an abstract 7-layer diagram to memorize, but as something you can literally watch happen inside Packet Tracer's Simulation Mode, one PDU at a time.
 
-- **MAC Address Learning:** How switches build MAC address tables by observing source addresses
-- **VLAN (Virtual LAN):** How to segment a physical switch into isolated broadcast domains
-- **Trunk Ports:** How trunk links carry multiple VLANs using 802.1Q tagging
-- **Access Ports:** How access ports assign traffic to a single VLAN
-- **SVI (Switch Virtual Interface):** How switches get IP addresses for inter-VLAN routing
+The star of this lab is a single DHCP Discover frame. We will trace it from the moment PC1's application layer decides it needs an IP address, through UDP, through IP, through Ethernet, down to the wire — and then do the same for the server's replies going the opposite direction.
 
-By the end, you'll understand why switches are called **Layer 2 devices**—they forward frames (L2) based on MAC addresses, not IP addresses (L3).
+### 1.1 Learning Objectives
+
+By the end of this lab you will be able to:
+
+- Explain what a DHCP client does before it has any IP configuration, and why its first packet must be a broadcast
+- Walk through the full DORA (Discover, Offer, Request, Ack) exchange and state which frames are broadcast vs. unicast and why
+- Identify Layer 2 (MAC), Layer 3 (IP), Layer 4 (UDP port), and Layer 7 (DHCP message type) fields inside a captured packet
+- Explain encapsulation and de-encapsulation as data moves down and back up the stack
+- Configure a DHCP server and DHCP-enabled client interfaces in Packet Tracer
+- Use Simulation Mode to capture and step through the exchange frame by frame
 
 ---
 
 ## 2. Business Context
 
-**Scenario:** DataFlow Solutions has three office switches (SW1, SW2, SW3). Currently, all devices are on VLAN 1 (the default). This means:
-- **Problem:** All devices can reach each other via broadcast; security risk
-- **Solution:** Segment traffic into VLANs (VLAN 10 for NY staff, VLAN 20 for Tokyo, VLAN 30 for Singapore)
+**Why would a real company do this?**
 
-**Challenge:** After VLANs, devices on different VLANs can't communicate. **Solution:** Inter-VLAN routing (requires a router). This will be covered in Day 07.
+Nobody manually types an IP address into 400 laptops. Every enterprise, from a 10-person startup to a Fortune 500 company, runs DHCP so that:
 
----
+- **"New hires should be productive on day one"** → plug a laptop into any wall jack or join any Wi-Fi SSID, and it gets a working IP address, gateway, and DNS server automatically — no help-desk ticket required.
+- **"We can't run out of addresses or hand out duplicates"** → a DHCP server tracks lease state centrally, which is the only way to guarantee two devices never collide on the same IP in a network with hundreds of hosts joining and leaving constantly.
+- **"Our security team needs to see exactly what got what address, when"** → DHCP lease logs are a standard part of incident response; "who had 192.168.1.87 at 2:14pm on Tuesday" is a question DHCP answers and static addressing can't.
+- **"An engineer needs to actually debug 'the network is slow' tickets"** → understanding *which* layer a problem lives at (is the client not even getting an IP — Layer 3/DHCP problem — or does it have an IP but can't resolve names — Layer 7/DNS problem?) is the single most valuable diagnostic skill a junior engineer develops, and it comes directly from understanding the OSI model as a troubleshooting tool, not a trivia list.
 
-## 3. Network Topology (Same as Day 02, but Focusing on Layer 2)
-
-Three switches (SW1, SW2, SW3) with:
-- **SW1 (NY):** VLAN 10 (NY staff)
-- **SW2 (Tokyo):** VLAN 20 (Tokyo staff)
-- **SW3 (Singapore):** VLAN 30 (Singapore staff)
-- **VLAN 1 (Mgmt):** All switches (for remote management)
+This lab is small on purpose — the entire point is that the OSI model stops being an abstract chart the moment you've watched one broadcast DHCP Discover frame leave a NIC and get answered.
 
 ---
 
-## 4. Understanding MAC Address Learning
+## 3. Topology Reference
 
-### 4.1 What is a MAC Address?
+<p align="center">
+  <img src="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Lab-Photos/Day-03-OSI-Model-1.png" alt="Day 03 OSI Model Lab 1" width="1000">
+</p>
+<p align="center">
+  <img src="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Lab-Photos/Day-03-OSI-Model-2.png" alt="Day 03 OSI Model Lab 2" width="1000">
+</p>
 
-- **Length:** 48 bits (6 octets), written as `00:11:22:33:44:55`
-- **Format:** First 3 octets = OUI (Organizationally Unique Identifier, vendor code)
-- **Example:** `00:50:56:xx:xx:xx` = VMware (OUI prefix)
-- **Scope:** Local-link only (not routed across the internet, unlike IP addresses)
+```text
+PC1 -- SW1 -- R1 -- R2 -- SW2 -- SRV1 (DHCP Server)
+```
 
-### 4.2 How Switches Learn MAC Addresses
-
-**Scenario:** PC0 (MAC address `00:11:22:33:44:01`) is connected to SW1 port Fa0/2.
-
-1. **PC0 sends a frame** (e.g., DHCP request broadcast)
-   - Source MAC: `00:11:22:33:44:01`
-   - Destination: `ff:ff:ff:ff:ff:ff` (broadcast)
-
-2. **SW1 receives frame on Fa0/2**
-   - Examines source MAC
-   - Checks MAC address table for entry
-   - **Not found:** Adds entry: `00:11:22:33:44:01 → Fa0/2`
-
-3. **Future frames from PC0**
-   - SW1 knows PC0 is on Fa0/2
-   - **Unicast frames** (specific destination) → Forward directly to Fa0/2
-   - **Broadcast frames** → Forward to all ports except Fa0/2 (flooding)
-
-**Key Point:** Switches learn MAC addresses **from source addresses**, not destinations.
-
-### 4.3 MAC Address Table Aging
-
-- **Default TTL:** 300 seconds (5 minutes)
-- **Reason:** Devices move; old entries become stale
-- **Example:** If PC0 unplugged and reconnected to Fa0/3, old entry expires; new entry learned
+| Device | Role |
+|---|---|
+| PC1 | DHCP client |
+| SW1 | Access switch, PC1's local segment |
+| R1 | Local-segment router / DHCP relay point |
+| R2 | Second router (WAN hop toward the server segment) |
+| SW2 | Access switch, server segment |
+| SRV1 | DHCP server |
 
 ---
 
-## 5. VLAN Basics
+## 4. IP Addressing Plan
 
-### 5.1 What is a VLAN?
+### 4.1 Why Sized This Way
 
-A **VLAN** is a logical grouping of ports on a switch that creates isolated **broadcast domains**.
+| Segment | Hosts needed | Why this prefix |
+|---|---|---|
+| Local network (PC1's LAN, behind R1) | Handful of clients, all DHCP-assigned | `/24` (254 usable) — a DHCP scope is almost always sized generously since its entire purpose is absorbing however many clients show up |
+| WAN link (R1 ↔ R2) | Exactly 2 | `/24` is used in the original lab for simplicity, but the *correct* engineering answer for a 2-host point-to-point link is a `/30` — see the calculation below for why |
 
-**Without VLANs:** All ports on a switch are in one broadcast domain. Broadcast frames flood to all ports.
+### 4.2 Manual Calculation Walkthrough
 
-**With VLANs:** Each VLAN is a separate broadcast domain. Broadcast frames only flood within the VLAN.
+The original lab's WAN network (`10.0.0.0/24`) is oversized for a 2-host router-to-router link — a good teaching moment for "just because it works doesn't mean it's right-sized." Here's the correct-sizing math:
 
-### 5.2 VLAN Types
+```text
+Requirement: exactly 2 usable hosts (R1's WAN interface + R2's WAN interface)
 
-| VLAN | Range | Purpose | Example |
-|------|-------|---------|---------|
-| **VLAN 1** | 1–1005 | Default; management | Used by switches for remote management (SSH, Telnet) |
-| **Extended** | 1006–4094 | Extended range VLANs | Enterprise deployments with many VLANs |
-| **Reserved** | 1002–1005 | Legacy (FDDI, Token Ring) | Deprecated; avoid |
+usable hosts = 2^h − 2
+2^1 − 2 = 0   → too small
+2^2 − 2 = 2   → exactly fits
 
-### 5.3 VLAN Configuration Steps
-
-**Example: Create VLAN 10 on SW1**
-
-```
-Switch(config)# vlan 10
-Switch(config-vlan)# name NY-Staff
-Switch(config-vlan)# exit
-
-Switch(config)# interface FastEthernet0/2
-Switch(config-if)# switchport mode access
-Switch(config-if)# switchport access vlan 10
-Switch(config-if)# exit
+h = 2 → prefix = 32 − 2 = /30
 ```
 
-**What this does:**
-1. Creates VLAN 10 with name "NY-Staff"
-2. Assigns port Fa0/2 to VLAN 10
-3. Fa0/2 is now an **access port** (single VLAN, no tagging)
+```text
+/30 = 11111111.11111111.11111111.111111 00
+    =     255  .    255 .    255 .    252
+```
+
+Applied to `10.0.0.0/30`:
+
+```text
+Network address:    10.0.0.0    (all host bits = 0)
+First usable host:  10.0.0.1    (R1)
+Last usable host:   10.0.0.2    (R2)
+Broadcast address:  10.0.0.3    (all host bits = 1)
+```
+
+Using `10.0.0.0/24` here (as the plain overview suggests) wastes 251 usable addresses on a link that will only ever have 2 devices — this lab's manual configuration below uses the correctly-sized `/30` instead.
+
+### 4.3 Full Device Address Table
+
+| Device | Interface | IP Address | Mask | Assignment Method |
+|---|---|---|---|---|
+| PC1 | NIC | 192.168.1.10 (leased) | 255.255.255.0 | **DHCP** |
+| R1 | LAN-facing (Gi0/0) | 192.168.1.1 | 255.255.255.0 | Static (default gateway for PC1) |
+| R1 | WAN-facing (Gi0/1) | 10.0.0.1 | 255.255.255.252 | Static |
+| R2 | WAN-facing (Gi0/0) | 10.0.0.2 | 255.255.255.252 | Static |
+| R2 | Server-side (Gi0/1) | 192.168.2.1 | 255.255.255.0 | Static (default gateway for SRV1's segment) |
+| SRV1 | NIC | 192.168.2.100 | 255.255.255.0 | Static (a DHCP server needs a fixed address itself) |
+
+**DHCP pool served to PC1's segment:** network `192.168.1.0/24`, default router `192.168.1.1`, DNS server `8.8.8.8` (placeholder), lease range excluding `.1` (the gateway) and `.100`–`.110` (reserved).
 
 ---
 
-## 6. Trunk Ports vs. Access Ports
+## 5. Pre-Configuration Checklist
 
-### 6.1 Access Ports (Single VLAN)
-
-**Purpose:** End devices (PCs, servers) connect here.
-
-**Behavior:**
-- Accepts untagged frames
-- Assigns frames to a single VLAN (access VLAN)
-- Sends frames out untagged (receiving device doesn't see VLAN tag)
-
-**Configuration:**
-```
-Switch(config)# interface FastEthernet0/2
-Switch(config-if)# switchport mode access
-Switch(config-if)# switchport access vlan 10
-```
-
-### 6.2 Trunk Ports (Multiple VLANs)
-
-**Purpose:** Switch-to-switch or switch-to-router links.
-
-**Behavior:**
-- Carries multiple VLANs using **802.1Q tagging** (adds 4-byte header with VLAN ID)
-- Receives tagged frames; processes VLAN ID
-- Forwards frames to all other trunk ports (flooding for that VLAN) or to access ports in that VLAN
-
-**Configuration:**
-```
-Switch(config)# interface GigabitEthernet0/1
-Switch(config-if)# switchport mode trunk
-Switch(config-if)# switchport trunk allowed vlan 1,10,20
-Switch(config-if)# switchport trunk native vlan 1
-```
-
-**Explanation:**
-- `switchport mode trunk`: This port is a trunk
-- `switchport trunk allowed vlan 1,10,20`: Only these VLANs traverse this trunk (security; prevents flooding to unwanted VLANs)
-- `switchport trunk native vlan 1`: Untagged frames are assigned to VLAN 1
-
-### 6.3 Native VLAN Concept
-
-**Definition:** The VLAN assigned to untagged frames arriving on a trunk port.
-
-**Default:** VLAN 1 (should be changed for security)
-
-**Example:**
-- Untagged frame arrives on trunk port with native VLAN 1
-- Switch processes it as a VLAN 1 frame
-- Forwards it to all VLAN 1 ports (access + trunk)
-
-**Security Issue:** If attacker sends untagged frames, they're assigned to native VLAN. Changing native VLAN from 1 to an unused VLAN (e.g., 999) prevents this.
+1. Place PC1, SW1, R1, R2, SW2, and SRV1 per the topology.
+2. Cable with straight-through everywhere here (router-switch, switch-PC, switch-server) except R1–R2, which is router-to-router straight-through in Packet Tracer's auto-sensing model.
+3. Set PC1's IP configuration mode to **DHCP** (not static) — this is the entire point of the lab.
+4. Have Packet Tracer's **Simulation Mode** (not Realtime) ready before you generate any traffic — you need to step through PDUs one at a time to see each layer.
 
 ---
 
-## 7. SVI (Switch Virtual Interface)
+## 6. Configuration Tasks
 
-### 7.1 What is an SVI?
+### 6.1 R1 — LAN and WAN interfaces
 
-An **SVI** is a virtual interface that gives the switch an IP address on a VLAN.
-
-**Purpose:** Remote management (SSH, Telnet, SNMP) and inter-VLAN routing.
-
-**Example: SW1 VLAN 10 SVI**
-
+```text
+Router>enable
+Router#configure terminal
+Router(config)#hostname R1
+R1(config)#interface gigabitEthernet 0/0
+R1(config-if)#description LAN - PC1 segment
+R1(config-if)#ip address 192.168.1.1 255.255.255.0
+R1(config-if)#no shutdown
+R1(config-if)#exit
+R1(config)#interface gigabitEthernet 0/1
+R1(config-if)#description WAN to R2
+R1(config-if)#ip address 10.0.0.1 255.255.255.252
+R1(config-if)#no shutdown
+R1(config-if)#exit
+R1(config)#ip route 192.168.2.0 255.255.255.0 10.0.0.2
 ```
-Switch(config)# interface vlan 10
-Switch(config-if)# ip address 192.168.10.2 255.255.255.0
-Switch(config-if)# no shutdown
+
+> **Mode:** Global Config → Interface Config. The static route tells R1 how to reach SRV1's subnet across R2 — without it, PC1 could get a lease from a *local* DHCP source but never reach a server sitting behind another router (this is why real deployments often use a DHCP *relay* — see Section 10).
+
+### 6.2 R2 — WAN and server-side interfaces
+
+```text
+Router>enable
+Router#configure terminal
+Router(config)#hostname R2
+R2(config)#interface gigabitEthernet 0/0
+R2(config-if)#description WAN to R1
+R2(config-if)#ip address 10.0.0.2 255.255.255.252
+R2(config-if)#no shutdown
+R2(config-if)#exit
+R2(config)#interface gigabitEthernet 0/1
+R2(config-if)#description Server segment
+R2(config-if)#ip address 192.168.2.1 255.255.255.0
+R2(config-if)#no shutdown
+R2(config-if)#exit
+R2(config)#ip route 192.168.1.0 255.255.255.0 10.0.0.1
 ```
 
-**What this does:**
-- Creates an interface named "Vlan10"
-- Assigns IP `192.168.10.2` to this interface
-- Now you can SSH to `192.168.10.2` to manage SW1
+### 6.3 SRV1 — static IP and DHCP service
 
-**Note:** The SVI IP is on the VLAN network (192.168.10.0/24), not on a specific port. Traffic destined for 192.168.10.2 is routed to the SVI (inside the switch).
+In Packet Tracer, open SRV1 → **Desktop → IP Configuration**, set it static:
+
+| Field | Value |
+|---|---|
+| IP Address | 192.168.2.100 |
+| Subnet Mask | 255.255.255.0 |
+| Default Gateway | 192.168.2.1 |
+
+Then **Services → DHCP**, and configure a pool:
+
+| Field | Value |
+|---|---|
+| Default Gateway | 192.168.1.1 |
+| DNS Server | 8.8.8.8 |
+| Start IP Address | 192.168.1.11 |
+| Subnet Mask | 255.255.255.0 |
+| Max Users | 200 |
+| Service | **On** |
+
+> A DHCP server itself must always use a static, unchanging address — a server that DHCP'd its own address would create a bootstrapping paradox (it can't hand out leases if it doesn't reliably exist at a known address).
+
+### 6.4 PC1 — enable DHCP
+
+Open PC1 → **Desktop → IP Configuration → DHCP** (radio button, not Static). Do not type anything — this is the point.
+
+> **Important architectural note:** in this topology, R1 and SRV1 are on *different subnets*, separated by R2. By default, routers do **not** forward broadcast traffic (DHCP Discover is a broadcast, destination `255.255.255.255`), so this design only works if R1 is configured to relay DHCP requests toward SRV1's subnet — see Section 6.5.
+
+### 6.5 DHCP relay on R1 (`ip helper-address`)
+
+```text
+R1(config)#interface gigabitEthernet 0/0
+R1(config-if)#ip helper-address 192.168.2.100
+R1(config-if)#exit
+```
+
+> **Mode:** Interface config, applied on the interface *facing the DHCP clients* (R1's LAN side). `ip helper-address` converts an incoming broadcast DHCP request into a **unicast** packet addressed directly to the specified DHCP server, forwarding it across the WAN link that would otherwise silently drop it. This single command is the resolution to "why is my DHCP client stuck if the server is on a different subnet" — one of the most common real-world DHCP tickets.
 
 ---
 
-## 8. Configuration by Device
+## 7. Verification Steps
 
-### 8.1 SW1 (New York Switch) - Complete Configuration
+| Device | Command | What to check |
+|---|---|---|
+| R1, R2 | `show ip interface brief` | All interfaces `up/up` |
+| R1 | `show ip route` | Route to `192.168.2.0/24` present |
+| R1 | `show run \| include helper` | `ip helper-address 192.168.2.100` present on Gi0/0 |
+| PC1 | `ipconfig` (PC1's terminal, or Desktop → IP Config) | PC1 shows a leased `192.168.1.x` address, not `0.0.0.0` |
 
-```
-Switch(config)# vlan 1
-Switch(config-vlan)# name Management
-Switch(config-vlan)# exit
+### 7.1 Expected Output Gallery
 
-Switch(config)# vlan 10
-Switch(config-vlan)# name NY-Staff
-Switch(config-vlan)# exit
+**`PC1> ipconfig`** (after DHCP succeeds)
 
-! Create SVI for VLAN 1 (management)
-Switch(config)# interface vlan 1
-Switch(config-if)# ip address 192.168.10.254 255.255.255.0
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-! Create SVI for VLAN 10 (staff)
-Switch(config)# interface vlan 10
-Switch(config-if)# ip address 192.168.10.2 255.255.255.0
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-! Access port for PC0 (VLAN 10)
-Switch(config)# interface FastEthernet0/2
-Switch(config-if)# switchport mode access
-Switch(config-if)# switchport access vlan 10
-Switch(config-if)# description PC0-Access
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-! Access port for PC1 (VLAN 10)
-Switch(config)# interface FastEthernet0/3
-Switch(config-if)# switchport mode access
-Switch(config-if)# switchport access vlan 10
-Switch(config-if)# description PC1-Access
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-! Trunk port to R1-NY (carries VLAN 1, 10)
-Switch(config)# interface GigabitEthernet0/1
-Switch(config-if)# switchport mode trunk
-Switch(config-if)# switchport trunk native vlan 1
-Switch(config-if)# switchport trunk allowed vlan 1,10
-Switch(config-if)# description Uplink-to-R1-NY
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-! Set default gateway (for management)
-Switch(config)# ip default-gateway 192.168.10.1
-Switch(config)# exit
+```text
+IP Address......................: 192.168.1.11
+Subnet Mask......................: 255.255.255.0
+Default Gateway..................: 192.168.1.1
+DNS Server........................: 8.8.8.8
 ```
 
-**Verification:**
-```
-Switch# show vlan brief
+**`R1# show run | include helper`**
 
-VLAN Name                             Status    Ports
----- -------------------------------- --------- -------------------------------
-1    Management                       active    Gi0/1(t)
-10   NY-Staff                         active    Fa0/2, Fa0/3, Gi0/1(t)
-
-! Gi0/1(t) = trunk port; Fa0/x = access ports
+```text
+ ip helper-address 192.168.2.100
 ```
+
+**Simulation Mode — DHCP Discover frame captured leaving PC1**, inspected via the PDU details window:
+
+```text
+[Layer 7 - DHCP]
+Message Type: DHCPDISCOVER
+
+[Layer 4 - UDP]
+Src Port: 68 (DHCP Client)
+Dst Port: 67 (DHCP Server)
+
+[Layer 3 - IP]
+Src IP: 0.0.0.0        (PC1 has no address yet)
+Dst IP: 255.255.255.255 (limited broadcast)
+
+[Layer 2 - Ethernet]
+Src MAC: 0060.2F3D.9A21 (PC1's real MAC)
+Dst MAC: FFFF.FFFF.FFFF (broadcast)
+```
+
+Notice the source IP is `0.0.0.0`, not `192.168.1.10` as an oversimplified description might suggest — a device that has never had an address literally cannot claim one as a source address yet. This is a detail many students get wrong until they see the actual captured packet.
+
+**DHCP Offer returning from SRV1** (now unicast at Layer 2 once the server knows the client's MAC, but still broadcast at Layer 3 until the client has confirmed the address):
+
+```text
+[Layer 7 - DHCP]
+Message Type: DHCPOFFER
+Offered IP: 192.168.1.11
+
+[Layer 3 - IP]
+Src IP: 192.168.2.100
+Dst IP: 255.255.255.255
+```
+
+### 7.2 The Full DORA Sequence
+
+| Step | Frame | Direction | L2 Dst | L3 Src → Dst | Purpose |
+|---|---|---|---|---|---|
+| 1 | Discover | Client → * | Broadcast (FFFF.FFFF.FFFF) | 0.0.0.0 → 255.255.255.255 | "Is there a DHCP server anywhere?" |
+| 2 | Offer | Server → Client | Unicast (client MAC known) | Server IP → 255.255.255.255 | "I can offer you this address" |
+| 3 | Request | Client → * | Broadcast | 0.0.0.0 → 255.255.255.255 | "I accept that offer" (broadcast so any *other* DHCP server that also offered knows it lost) |
+| 4 | Ack | Server → Client | Unicast | Server IP → 255.255.255.255 | "Confirmed, lease is yours" |
+
+> **Memory aid:** **D**o **O**ver **R**eal-quick **A**greement — DORA. Discover, Offer, Request, Ack, in that order, every time.
 
 ---
 
-### 8.2 SW2 (Tokyo Switch) - Configuration
+## 8. Common Mistakes (the 80/20)
 
-```
-Switch(config)# vlan 1
-Switch(config-vlan)# name Management
-Switch(config-vlan)# exit
-
-Switch(config)# vlan 20
-Switch(config-vlan)# name Tokyo-Staff
-Switch(config-vlan)# exit
-
-! SVI for management
-Switch(config)# interface vlan 1
-Switch(config-if)# ip address 192.168.20.254 255.255.255.0
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-! SVI for staff
-Switch(config)# interface vlan 20
-Switch(config-if)# ip address 192.168.20.2 255.255.255.0
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-! Access ports for SRV1, SRV2
-Switch(config)# interface FastEthernet0/2
-Switch(config-if)# switchport mode access
-Switch(config-if)# switchport access vlan 20
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-Switch(config)# interface FastEthernet0/3
-Switch(config-if)# switchport mode access
-Switch(config-if)# switchport access vlan 20
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-! Trunk to R2-TKY
-Switch(config)# interface GigabitEthernet0/1
-Switch(config-if)# switchport mode trunk
-Switch(config-if)# switchport trunk native vlan 1
-Switch(config-if)# switchport trunk allowed vlan 1,20
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-! Default gateway
-Switch(config)# ip default-gateway 192.168.20.1
-```
+1. **Forgetting `ip helper-address` when the DHCP server is on a different subnet than the client.** By far the most common cause of "PC1 shows 0.0.0.0 / Automatic Private IP" in a routed DHCP lab — the Discover broadcast never leaves the client's local segment without it.
+2. **Assuming the DHCP Discover's source IP is the address the client is about to get.** It's `0.0.0.0` — the client has no address yet, by definition.
+3. **Forgetting to make the DHCP server's own address static.** A DHCP server on DHCP is a bootstrapping contradiction.
+4. **Leaving PC1 on Static IP configuration mode instead of switching the radio button to DHCP.** Trivial, but a very common miss in Packet Tracer specifically.
+5. **Not excluding the DHCP server, gateway, or router addresses from the DHCP pool's range**, causing an eventual lease collision with a statically-assigned device.
+6. **Confusing "the Request in step 3 is broadcast" with a mistake** — students often assume once the client has an offer, subsequent messages should immediately go unicast. The Request stays broadcast specifically so any other DHCP server that made a competing offer also hears it and releases its offered address.
 
 ---
 
-### 8.3 SW3 (Singapore Switch) - Configuration
+## 9. Troubleshooting Guide
 
-```
-! Same pattern as SW2, but VLAN 30 instead of 20
-Switch(config)# vlan 1
-Switch(config-vlan)# name Management
-Switch(config-vlan)# exit
-
-Switch(config)# vlan 30
-Switch(config-vlan)# name Singapore-Staff
-Switch(config-vlan)# exit
-
-Switch(config)# interface vlan 1
-Switch(config-if)# ip address 192.168.30.254 255.255.255.0
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-Switch(config)# interface vlan 30
-Switch(config-if)# ip address 192.168.30.2 255.255.255.0
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-Switch(config)# interface FastEthernet0/2
-Switch(config-if)# switchport mode access
-Switch(config-if)# switchport access vlan 30
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-Switch(config)# interface FastEthernet0/3
-Switch(config-if)# switchport mode access
-Switch(config-if)# switchport access vlan 30
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-Switch(config)# interface GigabitEthernet0/1
-Switch(config-if)# switchport mode trunk
-Switch(config-if)# switchport trunk native vlan 1
-Switch(config-if)# switchport trunk allowed vlan 1,30
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-Switch(config)# ip default-gateway 192.168.30.1
-```
+| Step | Symptom | Likely Cause | Diagnostic Command | Fix |
+|---|---|---|---|---|
+| 1 | PC1 shows `0.0.0.0` or an Automatic Private IP (169.254.x.x) | DHCP Discover never reached the server (no relay, wrong subnet) | `show run \| include helper` on R1 | Add `ip helper-address <DHCP-server-IP>` on the client-facing interface |
+| 2 | PC1 gets no response at all, even locally | DHCP service not enabled on SRV1, or wrong pool subnet configured | Check SRV1 → Services → DHCP → ON, pool matches PC1's subnet | Enable service, correct pool |
+| 3 | PC1 gets an IP, but it's outside the expected `192.168.1.0/24` range | Wrong pool subnet/mask configured on SRV1 | Inspect DHCP pool config on SRV1 | Correct the pool's network/mask |
+| 4 | Static devices (R1, SRV1) can't reach each other | Missing static route on R1 or R2 | `show ip route` | Add the missing route from Section 6.1/6.2 |
+| 5 | Simulation Mode shows the Discover frame dying at R1 | No `ip helper-address`, and routers don't forward broadcasts by design | Watch the PDU list step-by-step in Simulation Mode | Same fix as Step 1 |
 
 ---
 
-## 9. MAC Address Table Verification
+## 10. Design Analysis
 
-### 9.1 View MAC Address Table
+**Why this design over the alternatives?**
 
-```
-Switch# show mac-address-table
-
-          Mac Address Table
--------------------------------------------
-
-Vlan    Mac Address       Type        Ports
-----    -----------       --------    -----
-   1    0050.56ab.cdef    DYNAMIC     Gi0/1
-  10    0011.2233.4455    DYNAMIC     Fa0/2
-  10    0011.2233.4456    DYNAMIC     Fa0/3
-  10    0050.56ab.ce00    DYNAMIC     Gi0/1
-```
-
-**Explanation:**
-- **Vlan 1:** Management MAC learned on trunk (Gi0/1)
-- **Vlan 10:** PC0 (.4455) and PC1 (.4456) on access ports; R1-NY (.ce00) on trunk
-- **Type:** DYNAMIC = learned via source addresses; STATIC = manually configured
-
-### 9.2 MAC Address Aging
-
-```
-Switch# show mac-address-table aging-time
-
-Current MAC address aging time: 300
-
-! Entries are removed after 300 seconds (5 minutes) if not refreshed
-```
+- **Why put the DHCP server on a different subnet than the client instead of directly on the same LAN?** In real enterprises, DHCP servers are almost always centralized (often colocated with other core services) rather than one per branch LAN — this lab deliberately places SRV1 across a WAN hop to force the `ip helper-address` lesson, which is exactly the scenario a junior engineer will hit in production the first time they build a routed network with a central DHCP server.
+- **Why not just give R1 its own local DHCP pool instead of relaying?** A router *can* act as a DHCP server itself (`ip dhcp pool`), and that's a valid design for small branch offices. But centralizing DHCP (with relay) scales far better — one team manages one pool with consistent policy, instead of dozens of branch routers each running independent, potentially inconsistent DHCP configuration.
+- **Why does the DHCP Request stay broadcast in step 3 of DORA instead of going straight to unicast?** Because more than one DHCP server might have answered the original Discover with competing Offers — broadcasting the Request lets every server that offered see whether the client accepted *their* offer or someone else's, so the losing server(s) know to release the address they tentatively reserved.
 
 ---
 
-## 10. Common Mistakes
+## 11. Real-World Parallel
 
-| Mistake | Symptom | Fix |
-|---------|---------|-----|
-| **Wrong native VLAN** | Untagged traffic goes to wrong VLAN | Set `switchport trunk native vlan 1` correctly on both sides of trunk |
-| **Forgot to allow VLAN on trunk** | Traffic for VLAN doesn't cross trunk | Add VLAN to `switchport trunk allowed vlan` list |
-| **Access port with wrong VLAN** | Device can't reach others on same VLAN | Verify `switchport access vlan 10` (correct VLAN number) |
-| **SVI not created** | Can't SSH to switch | Create `interface vlan 10` with IP address |
-| **No default gateway on switch** | Switch can't route to remote networks | Set `ip default-gateway` to router IP |
+**You'd see this when...**
 
----
-
-## 11. Verification Checklist
-
-After configuring all three switches:
-
-- [ ] All VLANs created (VLAN 1, 10, 20, 30)
-- [ ] All access ports assigned to correct VLAN
-- [ ] All trunk ports configured with `switchport mode trunk`
-- [ ] Native VLAN set to 1 on all trunks
-- [ ] Allowed VLANs on trunks match actual VLANs
-- [ ] All SVIs created with correct IP addresses
-- [ ] Default gateway set on all switches
-- [ ] `show vlan brief` shows all VLANs and ports
-- [ ] `show mac-address-table` shows learned MACs
-- [ ] PC0 and PC1 can ping each other (same VLAN)
-- [ ] PC0 cannot ping SRV1 (different VLAN, no inter-VLAN routing yet)
+- ...a new office's laptops all show "limited connectivity" and the fix turns out to be a missing `ip helper-address` on the branch router, because the company's DHCP server lives in a central datacenter.
+- ...you're troubleshooting "some users get IPs, some don't" and the actual cause is a DHCP pool that's simply run out of leases — a scope-sizing problem, not a routing problem.
+- ...security asks "can you tell me which device had this IP address at 3pm yesterday" and the answer comes straight from DHCP lease logs.
+- ...you're explaining to a non-technical manager why "the network is down" could mean five completely different things depending on which OSI layer actually failed — this lab is the first time that distinction becomes concrete rather than academic.
 
 ---
 
-## 12. Conclusion
+## 12. Stretch Goal
 
-Day 03 introduced **Layer 2 switching concepts**. You now understand:
-- How switches learn MAC addresses and forward frames
-- How VLANs segment broadcast domains
-- The difference between access and trunk ports
-- How 802.1Q tagging allows multiple VLANs on one physical link
-
-**Next:** Day 07 will show how to route **between** VLANs (inter-VLAN routing), requiring a router in the VLAN routing path.
+1. Add a second DHCP scope on a different VLAN/subnet and configure a second `ip helper-address` so R1 relays to both a primary and secondary DHCP server, then simulate the primary server going down.
+2. Capture and diagram the *full* encapsulation/de-encapsulation stack for a DHCP Offer as it crosses from SRV1's NIC to PC1's NIC, labeling every header added and removed at each hop (including at R1 and R2, where the L2 header is stripped and rebuilt on every hop while the L3 header survives unchanged).
+3. Explain, without looking anything up, what would break if `ip helper-address` pointed at the wrong IP — trace the failure using only Simulation Mode.
 
 ---
 
-**Lab Documentation Version:** 1.0  
-**Last Updated:** 2026-08-30  
-**Status:** Complete
+## 13. Self-Assessment
+
+- [ ] Can you name all four DORA messages in order, from memory, and explain why the acronym has that abbreviation?
+- [ ] Can you explain why a DHCP Discover's source IP is `0.0.0.0`, not "whatever address it's about to get"?
+- [ ] Can you explain what `ip helper-address` does and where it's applied (which interface, which router)?
+- [ ] Can you name the OSI layer and protocol responsible for each of: MAC addressing, IP addressing, port numbers, and the DHCP message itself?
+- [ ] Could you diagram encapsulation (top-down) and de-encapsulation (bottom-up) from memory?
+
+---
+
+## 14. Key Concepts Demonstrated
+
+- OSI model layers mapped to real captured packet fields
+- DHCP DORA sequence and broadcast vs. unicast behavior at each step
+- Encapsulation/de-encapsulation across a routed hop
+- DHCP relay (`ip helper-address`) across subnet boundaries
+
+## What I Learned
+
+Watching a single DHCP Discover frame move through Simulation Mode made the OSI model concrete in a way no diagram ever did — the source IP being `0.0.0.0`, the destination MAC being all-Fs, the same UDP ports appearing on every exchange. It also surfaced a genuinely important real-world skill: recognizing that a client stuck with no IP address, sitting across a router from its DHCP server, is a routing/relay problem, not a "DHCP is broken" problem — those are very different tickets with very different fixes.
+
+## Skills Practiced
+
+- OSI model layer identification from live packet captures
+- DHCP DORA sequence analysis
+- DHCP server and scope configuration
+- DHCP relay agent configuration
+- Packet Tracer Simulation Mode packet inspection
+
+---
+
+## 15. GNS3 Lab
+
+This lab has a companion GNS3 topology built automatically by [`GNS3/build_lab.py`](GNS3/build_lab.py):
+
+| Role | Packet Tracer device | GNS3 image |
+|---|---|---|
+| Routers (R1, R2) | Cisco 2911 | VyOS |
+| Switches (SW1, SW2) | Cisco 2960 | Open vSwitch |
+| PC1, SRV1 | Generic PC/Server | Alpine Linux |
+
+Note: GNS3's Alpine Linux and VyOS both support real DHCP client/server behavior, but there is no built-in packet-capture "Simulation Mode" equivalent to Packet Tracer's PDU inspector — use Wireshark against a GNS3 link (right-click a link → Start capture) to replicate the DORA packet inspection from Section 7.
+
+See [`GNS3/README.md`](GNS3/README.md) for how to run the build script.

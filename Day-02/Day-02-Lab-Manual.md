@@ -1,6 +1,4 @@
-# Day 02 — Basic Routing & Static Routes
-
-## Lab Manual: Multi-Site Routing with Static Routes and Default Routes
+# Day 02 Lab Manual — Connecting Network Devices (Cabling & Physical Layer)
 
 ---
 
@@ -8,451 +6,419 @@
 
 | Field | Value |
 |---|---|
-| **Lab Title** | Basic Routing & Static Routes |
-| **Day** | Day 02 (Routing Foundation) |
-| **Topic Focus** | Static routing, default routes, route propagation, multi-branch network (3+ sites) |
-| **Estimated Time** | 3–4 hours |
-| **Difficulty** | Intermediate |
-| **Prerequisites** | Complete Day 01 (two-branch topology, basic configuration) |
-| **Lab Scope** | Three-branch topology (NY, Tokyo, Singapore); static routes on all routers; route summarization concepts |
-| **Skills Practiced** | Static route configuration, default route hierarchy, route verification, multi-site troubleshooting |
-| **Standards Referenced** | RFC 2328 (OSPF Routing), RFC 1918 (Private Address Space), RFC 3021 (/31 Point-to-Point Links) |
-| **Expected Outcome** | Three-branch network with full mesh routing; all sites can reach all other sites; internet access via perimeter firewall |
+| **Objective** | Build a two-site enterprise topology and select the correct cable type (straight-through copper, crossover copper, multi-mode fiber, single-mode fiber) for every connection based on device type and transmission distance, then layer a basic IP addressing plan on top so the physical design has something real to carry. |
+| **Exam Relevance** | CCNA 200-301 — Domain 1 (Network Fundamentals): 1.2 (physical interfaces and cabling types), 1.3 (interface and cable issues), 1.1 (device roles). This is one of the few labs that is tested almost entirely by "given a scenario, pick the right cable" — a recurring exam question type. |
+| **Prerequisites** | Day 01 (device roles and basic topology reading). No prior addressing experience required — a light addressing pass is included here, but the emphasis is physical layer. |
+| **Time Estimate** | 1.5 – 2 hours (first attempt); 30 minutes on repeat/review. |
+| **Difficulty** | ⭐☆☆☆☆ (Beginner) — no CLI configuration risk, but the cable-selection reasoning is a genuine, frequently-missed exam skill. |
 
 ---
 
-## 1. Overview
+## 1. Lab Overview
 
-This lab expands Day 01's two-branch topology to **three branches** (New York, Tokyo, Singapore), requiring more complex routing. You'll learn:
+This lab builds two independent branch topologies (Site A and Site B) and focuses entirely on **choosing the correct physical medium** for each link — copper straight-through, copper crossover, multi-mode fiber, or single-mode fiber — based on two factors: what kind of device is on each end, and how far apart they are.
 
-- **Static Route Administration:** How routers forward packets based on explicit route entries
-- **Default Route Behavior:** The catch-all for unknown destinations
-- **Route Summarization:** Grouping multiple subnets into a single route entry (RFC 3021 /31 links)
-- **Multi-Site Troubleshooting:** Verifying paths across three continents
-- **Scaling Limits:** Understanding when static routing reaches its limit (typically 10+ sites)
+Unlike Day 01, there is no firewall and no NAT here. The lesson is deliberately narrow: get the *physical* layer right first, because nothing above Layer 1 works if the cabling is wrong, and Packet Tracer (and real hardware) will silently refuse to link an interface if you pick the wrong cable type for the two endpoints involved.
 
-By the end, you'll grasp **why dynamic routing protocols (OSPF, BGP) are necessary** for larger networks.
+### 1.1 Learning Objectives
+
+By the end of this lab you will be able to:
+
+- State the rule for when a straight-through cable is required vs. a crossover cable, including the "unlike devices vs. like devices" heuristic and why modern hardware often makes this rule less strict (Auto-MDI-X)
+- Choose between multi-mode and single-mode fiber based on realistic distance requirements
+- Build a two-site topology in Packet Tracer with correctly cabled routers, switches, and end devices
+- Apply a basic IP addressing plan across both sites
+- Verify Layer 1/2 connectivity using `show` commands and interpret link-light/status behavior
+- Explain, in business terms, why cable and medium selection is a real cost and reliability decision, not a checkbox
 
 ---
 
 ## 2. Business Context
 
-**Scenario Evolution:**
-- **Day 01:** DataFlow Solutions had 2 offices (NY, Tokyo)
-- **Day 02:** DataFlow is opening a **Singapore office** to serve Asia-Pacific customers
-- **Day 02 Challenge:** Integrate Singapore without breaking existing NY ↔ Tokyo connectivity
+**Why would a real company do this?**
 
-**Requirements:**
-1. Singapore LAN (192.168.30.0/24) must reach NY (192.168.10.0/24) and Tokyo (192.168.20.0/24)
-2. All inter-office communication must flow through firewalls (security boundary)
-3. Internet access for all three offices via their respective perimeter firewalls
-4. All routing is static (no OSPF yet; keeping it simple)
+A network engineer rarely gets to redesign a whole enterprise from scratch — far more often, the job is "we're opening Site B, and it needs to talk to Site A." That single sentence hides a string of physical-layer decisions that cost real money if you get them wrong:
 
-**Hidden Challenge:** With static routes, every router must know about every subnet. As you add a 4th, 5th branch, the configuration becomes tedious. This motivates **Day 07+: OSPF/BGP dynamic routing**.
+- **"Site A and Site B are in different buildings on the same campus."** → this is exactly the 250-meter R3–R4 link in this lab. Copper Ethernet is only rated for reliable operation up to 100 meters before signal degradation becomes a problem — so anything building-to-building on a campus needs fiber. Multi-mode fiber is the standard, cost-effective choice at this distance; it's cheaper than single-mode transceivers and more than sufficient.
+- **"Site A and Site C are across town, 3 km apart."** → this is the R1–R3 link. Multi-mode fiber's practical range tops out well under a kilometer for most transceiver classes; anything genuinely long-haul needs single-mode fiber, which uses a narrower core and a laser (not LED) light source to travel kilometers with minimal attenuation. ISPs and telecom carriers build entire businesses on single-mode fiber for exactly this reason.
+- **"We're just wiring a wiring closet — router to switch, switch to PCs."** → ordinary copper Ethernet, well under the 100 m limit, is the correct and cheapest answer. Over-speccing fiber for a 2-meter patch-panel run wastes money on transceivers the link will never need.
+- **"Procurement wants to know why the fiber budget line item exists at all."** → this is precisely the kind of question a junior engineer must be able to answer with the reasoning in Section 2 of this manual, not just "the diagram said so."
+
+The underlying business truth: cable and medium selection is a **capital cost decision** disguised as a technical one. A company that runs single-mode fiber into every wiring closet is wasting money; a company that tries to run copper between buildings is signing up for a support ticket the day someone measures the actual distance.
 
 ---
 
-## 3. Network Topology
+## 3. Topology Reference
 
-### 3.1 Three-Branch Topology Diagram
+<p align="center">
+  <img src="https://github.com/TushanDorsey/Network-Engineering-Labs-CCNA-2026/blob/main/Lab-Photos/Day-02-Connecting-Devices.png" alt="Day 02 Connecting Devices Lab" width="1000">
+</p>
 
-```
-┌─────────────────────────────── INTERNET / ISP CORE ────────────────────────────────┐
-│                         203.0.113.0/24 (Public Space)                              │
-└──────┬──────────────────────────┬──────────────────────────┬──────────────────────┘
-       │                          │                          │
-   FW1-NYC              FW2-TKY                       FW3-SGP
-   203.0.113.2/30       203.0.113.6/30                203.0.113.10/30
-       │                          │                          │
-   ┌─────────────┬────────────────┬──────────────────────────┴──────────────┐
-   │             │                │                                         │
-  R1-NY        R2-TKY           R3-SGP                                   ISP-RTR
-  Inside       Inside            Inside                                203.0.113.1
-  192.168.     192.168.           192.168.                          
-  100.2/30     200.2/30           300.2/30
-       │             │                 │
-      SW1           SW2                SW3
-  (VLAN 10)    (VLAN 20)          (VLAN 30)
-       │             │                 │
-   PC0/PC1      SRV1/SRV2          SGP1/SGP2
-  .50/.51       .10/.11             .50/.51
+### 3.1 Site A (Branch Office)
+
+```text
+PC1 -- SW3 \
+             SW1 -- R2 (LAN)
+PC2 -- SW4 /  \
+            SW2 --/
 ```
 
-### 3.2 Expanded IP Addressing Plan
+Devices: `R1`, `R2`, `SW1`, `SW2`, `SW3`, `SW4`, `PC1`, `PC2`
 
-| Segment | Network | Prefix | Primary Use |
-|---------|---------|--------|------------|
-| **NY LAN** | 192.168.10.0/24 | /24 | NY office network |
-| **Tokyo LAN** | 192.168.20.0/24 | /24 | Tokyo office network |
-| **Singapore LAN** | 192.168.30.0/24 | /24 | Singapore office network |
-| **NY-R1 ↔ FW1 Transit** | 192.168.100.0/30 | /30 | NY firewall link |
-| **Tokyo-R2 ↔ FW2 Transit** | 192.168.200.0/30 | /30 | Tokyo firewall link |
-| **Singapore-R3 ↔ FW3 Transit** | 192.168.300.0/30 | /30 | Singapore firewall link |
-| **FW1 ↔ ISP (WAN)** | 203.0.113.0/30 | /30 | NY→Internet link |
-| **FW2 ↔ ISP (WAN)** | 203.0.113.4/30 | /30 | Tokyo→Internet link |
-| **FW3 ↔ ISP (WAN)** | 203.0.113.8/30 | /30 | Singapore→Internet link |
+### 3.2 Site B (Second Branch)
 
-### 3.3 Device Inventory (Additions from Day 01)
+```text
+PC3  -- SW7 \
+              SW5 -- R4 (LAN)
+SRV1 -- SW8 /  \
+             SW6 --/
+```
 
-| New Device | Type | Role | Interfaces |
-|-----------|------|------|-----------|
-| **SGP1, SGP2** | End device | Singapore staff | Static IPs (192.168.30.50–.51) |
-| **SW3** | Switch | Singapore Layer 2 | Gi0/1 (to R3), Fa0/2–Fa0/3 (access) |
-| **R3-SGP** | Router | Singapore gateway | eth0 (LAN), eth1 (to FW3) |
-| **FW3-SGP** | Firewall | Singapore perimeter | em0 (inside), em1 (outside) |
+Devices: `R3`, `R4`, `SW5`, `SW6`, `SW7`, `SW8`, `PC3`, `SRV1`
+
+### 3.3 Inter-Site / Router Links
+
+| Link | Distance | Medium |
+|---|---|---|
+| R1 ↔ R2 (within Site A) | 50 m | Copper straight-through |
+| R3 ↔ R4 (within Site B) | 250 m | Multi-mode fiber |
+| R1 ↔ R3 (Site A ↔ Site B) | 3 km | Single-mode fiber |
 
 ---
 
-## 4. Static Route Configuration Deep Dive
+## 4. IP Addressing Plan
 
-### 4.1 Why Static Routes?
+This lab's focus is physical media, so the addressing plan is intentionally lightweight — but every real cabling job eventually carries real traffic, so we assign one anyway.
 
-**Advantages:**
-- **Simple:** Explicit control; no protocol overhead
-- **Predictable:** Routes don't change unless manually updated
-- **Secure:** No routing protocol traffic; harder to attack
-- **Low overhead:** Minimal CPU/bandwidth on routers
+### 4.1 Why Sized This Way
 
-**Disadvantages:**
-- **Not scalable:** Every router needs routes to every subnet
-- **Manual updates:** Adding a new subnet requires config changes on all routers
-- **No automatic failover:** If a link goes down, traffic doesn't re-route
+| Segment | Hosts needed | Why this prefix |
+|---|---|---|
+| Site A LAN (behind R2) | PC1, PC2, headroom | `/24` — standard user LAN sizing, same reasoning as Day 01 |
+| Site B LAN (behind R4) | PC3, SRV1, headroom | `/24` — same reasoning |
+| R1 ↔ R2 (copper) | Exactly 2 | `/30` — point-to-point link, never needs a third address |
+| R3 ↔ R4 (multi-mode fiber) | Exactly 2 | `/30` — same reasoning; the *medium* changes, the addressing math doesn't |
+| R1 ↔ R3 (single-mode fiber) | Exactly 2 | `/30` — same reasoning again |
 
-**When to use:**
-- Small networks (2–5 branches)
-- Hub-and-spoke topology (all traffic goes through central site)
-- Lab environments and testing
+**Key teaching point:** the cable/medium you choose (copper, multi-mode, single-mode) is a *physical layer* decision. The subnet size is a *Layer 3* decision driven purely by host count. Students commonly (wrongly) assume "long fiber link = bigger subnet" — it doesn't. A 3 km single-mode link between two router interfaces is still exactly 2 hosts, still a `/30`.
 
-**When NOT to use:**
-- Large networks (10+ branches)
-- Mesh topologies (every site connects to every other)
-- Networks requiring automatic failover
+### 4.2 Manual Calculation Walkthrough
+
+Worked example for any of the three router-to-router `/30` links:
+
+```text
+Requirement: exactly 2 usable host addresses (one per router interface)
+
+usable hosts = 2^h − 2
+2^1 − 2 = 0   → too small
+2^2 − 2 = 2   → exactly fits
+
+h = 2 host bits → prefix = 32 − 2 = /30
+```
+
+Binary mask derivation:
+
+```text
+/30 = 11111111.11111111.11111111.111111 00
+    =     255  .    255 .    255 .    252
+```
+
+Applied to `10.0.12.0/30` (R1 ↔ R2):
+
+```text
+Network address:    10.0.12.0     (all host bits = 0)
+First usable host:  10.0.12.1     (R1's interface)
+Last usable host:   10.0.12.2     (R2's interface)
+Broadcast address:  10.0.12.3     (all host bits = 1)
+```
+
+**Block-size shortcut:** for `/30`, block size = `256 − 252 = 4`. So consecutive `/30` networks land on `.0, .4, .8, .12...` — this is why the three router links below use `.0`, `.4`, and `.8` rather than arbitrary numbers.
+
+### 4.3 Full Device Address Table
+
+| Device | Interface | IP Address | Mask | Connects To |
+|---|---|---|---|---|
+| PC1 | NIC | 192.168.1.10 | 255.255.255.0 | SW3 |
+| PC2 | NIC | 192.168.1.11 | 255.255.255.0 | SW4 |
+| R2 | Gi0/0 (LAN) | 192.168.1.1 | 255.255.255.0 | SW1 |
+| R1 | Gi0/0 | 10.0.12.1 | 255.255.255.252 | R2 Gi0/1 |
+| R2 | Gi0/1 | 10.0.12.2 | 255.255.255.252 | R1 Gi0/0 |
+| R1 | Gi0/1 (fiber) | 10.0.20.1 | 255.255.255.252 | R3 Gi0/1 (fiber) |
+| R3 | Gi0/1 (fiber) | 10.0.20.2 | 255.255.255.252 | R1 Gi0/1 (fiber) |
+| R3 | Gi0/0 (fiber) | 10.0.8.1 | 255.255.255.252 | R4 Gi0/1 (fiber) |
+| R4 | Gi0/1 (fiber) | 10.0.8.2 | 255.255.255.252 | R3 Gi0/0 (fiber) |
+| R4 | Gi0/0 (LAN) | 192.168.2.1 | 255.255.255.0 | SW5 |
+| PC3 | NIC | 192.168.2.10 | 255.255.255.0 | SW7 |
+| SRV1 | NIC | 192.168.2.11 | 255.255.255.0 | SW8 |
+
+**Default gateways:** PC1/PC2 → `192.168.1.1`; PC3/SRV1 → `192.168.2.1`.
 
 ---
 
-## 4.2 Route Propagation Concept
+## 5. Pre-Configuration Checklist
 
-**Day 01 Setup (Two Branches):**
-```
-PC0 (192.168.10.50) → R1-NY → FW1 → ISP → FW2 → R2-TKY → SRV1 (192.168.20.10)
-
-R1-NY routing table:
-  S 0.0.0.0/0 → 192.168.100.1 (default, everything else goes to FW1)
-  S 192.168.20.0/24 → 192.168.100.1 (Tokyo LAN via FW1)
-  C 192.168.10.0/24 (local NY LAN)
-
-ISP-RTR routing table:
-  S 192.168.10.0/24 → 203.0.113.2 (learn via FW1)
-  S 192.168.20.0/24 → 203.0.113.6 (learn via FW2)
-```
-
-**Day 02 Setup (Three Branches):**
-```
-R1-NY routing table (UPDATED):
-  S 0.0.0.0/0 → 192.168.100.1
-  S 192.168.20.0/24 → 192.168.100.1 (Tokyo via FW1/ISP)
-  S 192.168.30.0/24 → 192.168.100.1 (Singapore via FW1/ISP) ← NEW
-  C 192.168.10.0/24
-
-R2-TKY routing table (UPDATED):
-  S 0.0.0.0/0 → 192.168.200.1
-  S 192.168.10.0/24 → 192.168.200.1 (NY via FW2/ISP) ← UPDATED
-  S 192.168.30.0/24 → 192.168.200.1 (Singapore via FW2/ISP) ← NEW
-  C 192.168.20.0/24
-
-R3-SGP routing table (NEW):
-  S 0.0.0.0/0 → 192.168.300.1 (default)
-  S 192.168.10.0/24 → 192.168.300.1 (NY via FW3/ISP)
-  S 192.168.20.0/24 → 192.168.300.1 (Tokyo via FW3/ISP)
-  C 192.168.30.0/24
-
-ISP-RTR routing table (UPDATED):
-  S 192.168.10.0/24 → 203.0.113.2 (NY)
-  S 192.168.20.0/24 → 203.0.113.6 (Tokyo)
-  S 192.168.30.0/24 → 203.0.113.10 (Singapore) ← NEW
-```
-
-**Key observation:** Every router now has **3 static routes + 1 default route = 4 entries**. With 10 branches, this becomes **10 static routes per router**, which is tedious but manageable.
+1. Place all 8 Site A devices and all 8 Site B devices in Packet Tracer per the topology.
+2. Before cabling anything, write next to each planned link which cable type you intend to use — this lab is graded on that decision as much as the result.
+3. Have the Cable Selection Summary table (Section 6.4) open for reference while cabling.
+4. Confirm Packet Tracer's automatic cable-type suggestion (the small icon shown when you hover a connection type in the cable palette) matches your own reasoning — don't just trust it blindly; know *why*.
 
 ---
 
-## 5. Configuration by Device
+## 6. Configuration Tasks
 
-### 5.1 R1-NY (Updated Configuration)
+### 6.1 The Cabling Rule (learn this before touching Packet Tracer)
 
-**New Route:**
-```
-[edit]
-vyos@vyos# set protocols static route 192.168.30.0/24 next-hop 192.168.100.1
-vyos@vyos# commit
+**Straight-through cable** — used between **unlike devices** (their pin-outs are wired to naturally match): router↔switch, switch↔PC, switch↔server.
+
+**Crossover cable** — used between **like devices** (same pin-out on both ends, so the cable itself must cross transmit/receive pairs): switch↔switch, router↔router (copper), PC↔PC.
+
+> **Memory aid:** "Like needs a cross, unlike needs a straight line between them." If you're connecting two of the *same kind* of device, you cross the wires; if you're connecting *two different kinds*, they already talk past each other correctly.
+
+> **Modern caveat worth knowing for the exam and for real life:** most switches and NICs made since the mid-2000s support **Auto-MDI-X**, which senses the cable and electrically swaps pairs as needed — meaning a straight-through cable often "just works" even switch-to-switch on real hardware today. CCNA still tests the traditional straight-through/crossover rule because Packet Tracer enforces it strictly and because you need to recognize wrong cabling on legacy gear that lacks Auto-MDI-X.
+
+### 6.2 Fiber Medium Selection
+
+**Multi-mode fiber (MMF)** uses a wider core and an LED or low-cost laser source. Light bounces (multiple modes) down the core, which causes modal dispersion — signal degradation that limits reliable distance to roughly 300–2000 m depending on the transceiver class (this lab's 250 m R3–R4 link sits comfortably inside that range).
+
+**Single-mode fiber (SMF)** uses a much narrower core so only one path (mode) of light travels straight down the fiber, avoiding modal dispersion. Paired with a laser source, SMF reliably carries signal for kilometers to tens of kilometers — the 3 km R1–R3 link requires it.
+
+> **Memory aid:** "Single mode, single path, long-haul. Multi mode, multiple paths, medium-haul." If the distance is measured in kilometers, default to single-mode; if it's measured in tens to a few hundred meters, multi-mode is usually the economical choice; if it's measured in meters, copper is almost always both cheaper and sufficient.
+
+### 6.3 Building Site A
+
+**Step 1 — Place devices:** `R1`, `R2`, `SW1`, `SW2`, `SW3`, `SW4`, `PC1`, `PC2` per Section 3.1.
+
+**Step 2 — Cable using straight-through:**
+- `R2` → `SW1` (router to switch = unlike devices)
+- `R2` → `SW2` (same reasoning; R2 has two LAN-facing interfaces feeding two switches for redundancy)
+- `SW3` → `PC1` (switch to PC = unlike devices)
+- `SW4` → `PC2` (same reasoning)
+
+**Step 3 — Cable using crossover:**
+- `SW1` → `SW2` (switch to switch = like devices)
+- `SW1` → `SW3`
+- `SW2` → `SW4`
+
+**Step 4 — Cable R1 to R2 (50 m, within the same site):**
+- Copper straight-through STP/UTP. At 50 m, well inside copper's 100 m reliable range — no fiber justified.
+
+> In Packet Tracer, router-to-router links use a straight-through cable even though routers are "like devices," because router Ethernet ports are wired like switch/host ports on the interface itself, not like a second switch — always check your platform's actual cabling logic if the like/unlike rule seems to disagree with what connects. Packet Tracer will refuse a link if you pick the wrong type, which is your built-in check.
+
+### 6.4 Building Site B
+
+Repeat Site A's pattern with fiber for the inter-router link:
+
+- `R4` → `SW5`, `R4` → `SW6`: straight-through
+- `SW7` → `PC3`, `SW8` → `SRV1`: straight-through
+- `SW5` → `SW6`, `SW5` → `SW7`, `SW6` → `SW8`: crossover
+- `R3` ↔ `R4`: **multi-mode fiber**, 250 m — select the fiber port/module on both routers in Packet Tracer (not the copper FastEthernet/GigabitEthernet port) before attempting the link.
+
+### 6.5 The Inter-Site Link: R1 ↔ R3
+
+- **Medium: single-mode fiber**, 3 km.
+- In Packet Tracer, this requires adding a fiber interface module (if not present by default on the router model used) to both R1 and R3, then running the single-mode fiber cable type between them.
+
+### 6.6 Basic Router Configuration (so the addressing plan in Section 4 is actually live)
+
+For each router (`R1`, `R2`, `R3`, `R4`), repeat this pattern — shown here for `R2`:
+
+```text
+Router>enable
+Router#configure terminal
+Router(config)#hostname R2
+R2(config)#interface gigabitEthernet 0/0
+R2(config-if)#description LAN - SW1/SW2
+R2(config-if)#ip address 192.168.1.1 255.255.255.0
+R2(config-if)#no shutdown
+R2(config-if)#exit
+R2(config)#interface gigabitEthernet 0/1
+R2(config-if)#description To R1
+R2(config-if)#ip address 10.0.12.2 255.255.255.252
+R2(config-if)#no shutdown
+R2(config-if)#exit
 ```
 
-**Verify:**
+> **Mode:** Global Config → Interface Config. `no shutdown` is required on every interface — Cisco IOS interfaces boot administratively down by default, fiber ports included. On a fiber interface, `no shutdown` alone isn't sufficient if the far end isn't also up and the correct cable type isn't in place — unlike copper, a fiber link needs both strands (transmit/receive) correctly connected, so a single reversed fiber pair will show `up/down` (line protocol down) even with `no shutdown` issued.
+
+Apply the equivalent addressing to `R1`, `R3`, and `R4` per the table in Section 4.3. Add static routes so PCs on each site can reach the other:
+
+```text
+R1(config)#ip route 192.168.2.0 255.255.255.0 10.0.20.2
+R2(config)#ip route 0.0.0.0 0.0.0.0 10.0.12.1
+R3(config)#ip route 192.168.1.0 255.255.255.0 10.0.20.1
+R3(config)#ip route 10.0.12.0 255.255.255.252 10.0.20.1
+R4(config)#ip route 0.0.0.0 0.0.0.0 10.0.8.1
 ```
-vyos@vyos~$ show ip route
-S   0.0.0.0/0 [210/0] via 192.168.100.1, eth1
-S   192.168.20.0/24 [210/0] via 192.168.100.1, eth1
-S   192.168.30.0/24 [210/0] via 192.168.100.1, eth1       ← New route
-C>* 192.168.10.0/24 [0/0] via 192.168.10.1, eth0
-C>* 192.168.100.0/30 [0/0] via 192.168.100.2, eth1
-```
+
+> R1 sits at the "hub" of this design (it touches both R2 and R3), so it needs specific routes to both remote LANs; R2 and R4 (the branch-facing routers) only need a default route pointing back at R1's local interface, since everything not on their own LAN is "somewhere past R1."
+
+### 6.7 End Devices
+
+Assign IPs per Section 4.3 via each PC/Server's Desktop → IP Configuration tab.
 
 ---
 
-### 5.2 R2-TKY (Updated Configuration)
+## 7. Verification Steps
 
+| Device | Command | What to check |
+|---|---|---|
+| Any router | `show ip interface brief` | Every configured interface `up/up` |
+| Any router | `show interfaces gigabitEthernet 0/1` | `Media type` line — confirms fiber vs. copper is correctly detected |
+| Any switch | `show interfaces status` | All ports `connected`, correct duplex/speed |
+| Any router | `show ip route` | Connected + static/default routes present |
+
+### 7.1 Expected Output Gallery
+
+**`R1# show ip interface brief`**
+
+```text
+Interface                  IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/0         10.0.12.1       YES manual up                    up
+GigabitEthernet0/1         10.0.20.1       YES manual up                    up
 ```
-[edit]
-vyos@vyos# set protocols static route 192.168.30.0/24 next-hop 192.168.200.1
-vyos@vyos# commit
+
+**`R3# show interfaces gigabitEthernet 0/1`** (fiber link to R1)
+
+```text
+GigabitEthernet0/1 is up, line protocol is up
+  Hardware is Gigabit Ethernet, address is 00E0.8F1A.2C01
+  MTU 1500 bytes, BW 1000000 Kbit/sec, DLY 10 usec
+  Media type is fiber, 1000BaseSX/LX
+  Full-duplex, 1000Mb/s, media type is SX/LX
 ```
+
+`line protocol is up` on a fiber interface confirms both strands are correctly connected end to end — if only one strand is wired correctly, you'd see `up, line protocol is down`.
+
+**`SW3# show interfaces status`**
+
+```text
+Port      Name               Status       Vlan       Duplex  Speed Type
+Fa0/1     Link to PC1        connected    1          a-full  a-100 10/100BaseTX
+Fa0/2                        notconnect   1          auto    auto  10/100BaseTX
+```
+
+**`PC1> ping 192.168.2.11`** (full inter-site path test)
+
+```text
+Pinging 192.168.2.11 with 32 bytes of data:
+
+Reply from 192.168.2.11: bytes=32 time=2ms TTL=125
+Reply from 192.168.2.11: bytes=32 time=1ms TTL=125
+Reply from 192.168.2.11: bytes=32 time=1ms TTL=125
+Reply from 192.168.2.11: bytes=32 time=1ms TTL=125
+
+Ping statistics for 192.168.2.11:
+    Packets: Sent = 4, Received = 4, Lost = 0 (0% loss)
+```
+
+Success here proves every cable choice, every interface, and every static route across both sites and both media types (copper + multi-mode + single-mode) is correct end to end.
+
+### 7.2 Reachability Matrix
+
+| From | To | Expected | Why |
+|---|---|---|---|
+| PC1 | PC2 | Success | Same LAN, switched locally |
+| PC1 | R2 (gateway) | Success | Directly connected |
+| PC1 | SRV1 | Success | Routed across the 3 km single-mode + 250 m multi-mode chain |
+| PC3 | SRV1 | Success | Same LAN |
+| R1 | R3 (fiber interface) | Success | Directly connected via SMF |
 
 ---
 
-### 5.3 R3-SGP (New Router for Singapore)
+## 8. Common Mistakes (the 80/20)
 
-```
-configure
-!
-! LAN interface
-interface GigabitEthernet0/0
-  description Singapore-LAN-to-SW3
-  ip address 192.168.30.1 255.255.255.0
-  no shutdown
-!
-! Transit to firewall
-interface GigabitEthernet0/1
-  description Singapore-Transit-to-FW3
-  ip address 192.168.300.2 255.255.255.252
-  no shutdown
-!
-! Static routes (full mesh: must reach NY and Tokyo)
-ip route 192.168.10.0 255.255.255.0 192.168.300.1
-ip route 192.168.20.0 255.255.255.0 192.168.300.1
-ip route 0.0.0.0 0.0.0.0 192.168.300.1
-!
-end
-```
+1. **Using a crossover cable between a router and a switch, or straight-through between two switches.** This is the single most common Day 02 error — students memorize "copper = straight-through" without the unlike/like qualifier.
+2. **Forgetting to swap the router's port type to a fiber module before attempting the R1–R3 or R3–R4 link.** Packet Tracer will simply refuse the connection if you try to run fiber into a copper GigabitEthernet port.
+3. **Choosing multi-mode fiber for the 3 km link instead of single-mode** (or vice versa for the 250 m link) — always match distance to medium, not "fiber is fiber."
+4. **Forgetting `no shutdown` on fiber interfaces**, then assuming the fiber module itself is broken when the real issue is the same one from Day 01.
+5. **Not verifying `line protocol is up` specifically on fiber links** — fiber can be "administratively up" but still down at Layer 1 if the strands are swapped (TX on one end wired to TX, not RX, on the other).
+6. **Skipping the static routes on R1** (the hub router) — R2 and R4 each only know their own LAN and a default route; without R1 having explicit routes to both remote LANs, cross-site ping fails even though every cable is correct.
+7. **Assuming subnet size should scale with cable distance.** A 3 km fiber link between two router interfaces is still just a `/30` — physical medium and Layer 3 addressing are unrelated decisions.
 
 ---
 
-### 5.4 ISP-RTR (Updated with Third Branch)
+## 9. Troubleshooting Guide
 
-```
-[edit]
-vyos@vyos# set interfaces ethernet eth2 description "ISP-to-FW3-SGP"
-vyos@vyos# set interfaces ethernet eth2 address 203.0.113.9/30
-vyos@vyos# set protocols static route 192.168.30.0/24 next-hop 203.0.113.10
-vyos@vyos# commit
-```
-
-**Verify:**
-```
-vyos@vyos~$ show ip route
-S   192.168.10.0/24 [210/0] via 203.0.113.2, eth0
-S   192.168.20.0/24 [210/0] via 203.0.113.6, eth1
-S   192.168.30.0/24 [210/0] via 203.0.113.10, eth2     ← New route
-C>* 203.0.113.0/30 [0/0] via 203.0.113.1, eth0
-C>* 203.0.113.4/30 [0/0] via 203.0.113.5, eth1
-C>* 203.0.113.8/30 [0/0] via 203.0.113.9, eth2        ← New segment
-```
+| Step | Symptom | Likely Cause | Diagnostic Command | Fix |
+|---|---|---|---|---|
+| 1 | Packet Tracer won't let you draw the cable at all | Wrong cable type selected for the two endpoint types | N/A (visual) | Re-check Section 6.1's like/unlike rule and reselect the correct cable |
+| 2 | Interface shows `administratively down` | Forgot `no shutdown` | `show ip interface brief` | Enter interface, `no shutdown` |
+| 3 | Fiber interface shows `up, line protocol down` | Strands reversed, or far-end interface still down | `show interfaces gi0/1` | Verify both ends have `no shutdown`; try reconnecting the fiber pair |
+| 4 | PC reaches its own gateway but not the other site | Missing static/default route on R1 (the hub) | `show ip route` | Add the missing route from Section 6.6 |
+| 5 | Switch port shows `notconnect` | Wrong cable type, or device on the other end is powered off/interface down | `show interfaces status` | Re-verify cable type and remote end status |
+| 6 | Link "connects" visually in Packet Tracer but ping still fails | IP/mask mismatch between the two ends of a `/30` | `show run \| section interface` | Confirm both ends of each transit link are in the *same* /30 subnet |
 
 ---
 
-### 5.5 FW3-SGP (New Firewall for Singapore)
+## 10. Design Analysis
 
-**pfSense Configuration (Web UI):**
+**Why this design over the alternatives?**
 
-1. **Interfaces > Assignments**
-   - em0 (Inside): `192.168.300.1/30`
-   - em1 (Outside/WAN): `203.0.113.10/30`, Gateway: `203.0.113.9`
-
-2. **Firewall > NAT > Outbound**
-   - Rule: Source `192.168.30.0/24` → NAT to `203.0.113.10`
-
-3. **Firewall > Rules > LAN**
-   - Allow source `192.168.30.0/24` to destination `any`
-   - Allow source `192.168.10.0/24` and `192.168.20.0/24` to `192.168.30.0/24` (inter-office)
-
-4. **Firewall > Rules > WAN**
-   - Allow return traffic (stateful inspection)
+- **Why not run fiber everywhere, "to be safe"?** Fiber transceivers and modules cost meaningfully more per port than copper Ethernet, and offer zero practical benefit at 50 m — copper's 100 m limit isn't even close to being tested at that distance. Over-speccing every link with fiber is a real, recurring line-item waste that a network engineer is expected to catch.
+- **Why multi-mode instead of single-mode for the 250 m link?** Single-mode transceivers (and the lasers they use) cost more than multi-mode ones. Multi-mode comfortably covers 250 m, so choosing single-mode here would be paying for range the link will never use.
+- **Why does R1 act as the hub between the two sites instead of a direct SW-to-SW inter-site link?** Routers are required at Layer 3 boundaries between the two `/24` LANs — switches operate at Layer 2 and have no concept of routing between different IP subnets. The physical fiber link only makes cross-site traffic *possible*; it's R1's routing table that makes it *work*.
 
 ---
 
-### 5.6 SW3 (Singapore Switch)
+## 11. Real-World Parallel
 
-```
-!
-vlan 30
-  name Singapore-LAN
-!
-interface VLAN 30
-  ip address 192.168.30.2 255.255.255.0
-  no shutdown
-!
-interface GigabitEthernet0/1
-  switchport mode trunk
-  switchport trunk allowed vlan 1,30
-  switchport trunk native vlan 1
-  description Uplink-to-R3-SGP
-  no shutdown
-!
-interface FastEthernet0/2
-  switchport mode access
-  switchport access vlan 30
-  description SGP1-Access
-  no shutdown
-!
-interface FastEthernet0/3
-  switchport mode access
-  switchport access vlan 30
-  description SGP2-Access
-  no shutdown
-!
-ip default-gateway 192.168.30.1
-!
-end
-```
+**You'd see this when...**
+
+- ...facilities tells you a new building is going up 3 km from headquarters, and you're asked to spec the interconnect before construction finishes — this is precisely the R1–R3 decision.
+- ...a vendor quote comes back with single-mode transceivers priced into a 30-meter closet run, and you have to push back because it's the wrong medium for the distance.
+- ...a "the new switch won't link up" ticket turns out to be someone using a crossover cable on hardware without Auto-MDI-X.
+- ...you're doing a site survey and need to justify, line by line, why the fiber budget is what it is to a non-technical finance stakeholder.
 
 ---
 
-### 5.7 SGP1 & SGP2 (Singapore End Devices)
+## 12. Stretch Goal
 
-```
-# SGP1 Configuration
-auto eth0
-iface eth0 inet static
-  address 192.168.30.50
-  netmask 255.255.255.0
-  gateway 192.168.30.1
-
-# SGP2 Configuration
-auto eth0
-iface eth0 inet static
-  address 192.168.30.51
-  netmask 255.255.255.0
-  gateway 192.168.30.1
-```
+1. Add a third site (Site C) 900 m from Site B, and justify your medium choice with the same distance-based reasoning used in Section 6.2.
+2. Convert the R1–R2 copper link to fiber and calculate whether the swap is ever justified purely on distance grounds (it isn't at 50 m) — write two sentences explaining why "more expensive medium" isn't automatically "better."
+3. Deliberately reverse a fiber pair (if your platform allows simulating that) and observe the exact `show interfaces` output difference from a correctly wired link.
 
 ---
 
-## 6. Route Verification & Troubleshooting
+## 13. Self-Assessment
 
-### 6.1 Verification Checklist
-
-After adding the Singapore branch, verify:
-
-| Test | Command | Expected Result |
-|------|---------|-----------------|
-| **R1 routes Singapore** | R1-NY# show ip route | `S 192.168.30.0/24 via 192.168.100.1` |
-| **R2 routes Singapore** | R2-TKY# show ip route | `S 192.168.30.0/24 via 192.168.200.1` |
-| **R3 routes NY** | R3-SGP# show ip route | `S 192.168.10.0/24 via 192.168.300.1` |
-| **R3 routes Tokyo** | R3-SGP# show ip route | `S 192.168.20.0/24 via 192.168.300.1` |
-| **ISP knows Singapore** | ISP-RTR# show ip route | `S 192.168.30.0/24 via 203.0.113.10` |
-| **NY → Singapore ping** | PC0# ping 192.168.30.50 | ✓ 4 packets, 0% loss |
-| **Tokyo → Singapore ping** | SRV1# ping 192.168.30.50 | ✓ 4 packets, 0% loss |
-| **Singapore → NY ping** | SGP1# ping 192.168.10.50 | ✓ 4 packets, 0% loss |
+- [ ] Can you state the straight-through vs. crossover rule from memory, including the "like vs. unlike" reasoning?
+- [ ] Can you explain why multi-mode and single-mode fiber exist as separate products rather than one fiber type covering all distances?
+- [ ] Given a new distance requirement you've never seen before, could you correctly choose copper vs. multi-mode vs. single-mode?
+- [ ] Can you explain why subnet size and cable distance are unrelated decisions?
+- [ ] Can you name the router that needed the most static routes in this topology, and explain why?
 
 ---
 
-### 6.2 Traceroute Analysis
+## 14. Key Concepts Demonstrated
 
-**From PC0 (NY) to SGP1 (Singapore):**
-```
-PC0# traceroute -m 15 192.168.30.50
-traceroute to 192.168.30.50 (192.168.30.50), 15 hops max, 60 byte packets
- 1  192.168.10.1 (192.168.10.1)  2.345 ms      # R1-NY (local gateway)
- 2  192.168.100.1 (192.168.100.1)  3.456 ms    # FW1-NYC (inside interface)
- 3  203.0.113.1 (203.0.113.1)  5.678 ms        # ISP-RTR (backbone)
- 4  203.0.113.9 (203.0.113.9)  7.890 ms        # FW3-SGP (outside interface)
- 5  192.168.300.1 (192.168.300.1)  8.901 ms    # FW3-SGP (inside interface)
- 6  192.168.30.1 (192.168.30.1)  9.234 ms      # R3-SGP (gateway)
- 7  192.168.30.50 (192.168.30.50)  10.567 ms   # SGP1 (destination)
-```
+- Straight-through vs. crossover cabling and the like/unlike device rule
+- Multi-mode vs. single-mode fiber selection based on distance
+- Basic router interface addressing and static routing across mixed media
+- Physical layer verification via `show interfaces` and `show interfaces status`
 
-**What this tells you:**
-- Path is symmetric (same routers/firewalls both directions)
-- Latency increases with each hop (typical for WAN)
-- All routing decisions working correctly
+## What I Learned
+
+This lab made clear that Layer 1 decisions are business decisions wearing a technical hat — the "right" cable is the cheapest one that reliably meets the distance requirement, not the most impressive-sounding one. It also reinforced that physical medium and Layer 3 addressing are independent axes: a link's cable type never changes how you size its subnet.
+
+## Skills Practiced
+
+- Cable type identification and selection
+- Fiber optic medium selection by distance
+- Router interface addressing across mixed-media links
+- Physical and data-link layer verification
 
 ---
 
-## 7. Scaling Analysis: Static Routes at Limit
+## 15. GNS3 Lab
 
-### 7.1 Comparison: 3 vs. 5 vs. 10 Branches
+This lab has a companion GNS3 topology built automatically by [`GNS3/build_lab.py`](GNS3/build_lab.py):
 
-| Metric | 3 Branches | 5 Branches | 10 Branches |
-|--------|-----------|----------|------------|
-| **Routers** | 3 | 5 | 10 |
-| **Routes per router** | 3 + default = 4 | 5 + default = 6 | 10 + default = 11 |
-| **Total route entries** | 12 | 30 | 110 |
-| **Time to add new branch** | 5 min (update 3 routers) | 10 min (update 5) | 30 min (update 10 + ISP) |
-| **Risk of misconfiguration** | Low | Medium | High (forgot 1 route = broken) |
-| **Automatic failover** | No | No | No |
-| **Configuration files** | ~500 lines | ~800 lines | ~2000 lines |
+| Role | Packet Tracer device | GNS3 image |
+|---|---|---|
+| Routers (R1–R4) | Cisco 2911 | VyOS |
+| Switches (SW1–SW8) | Cisco 2960 | Open vSwitch |
+| PCs/Server | Generic PC/Server | Alpine Linux |
 
-**Conclusion:** Static routing works fine up to ~5 branches. Beyond that, **OSPF** (Day 07 content) becomes necessary.
+Note: GNS3's virtual links don't model fiber vs. copper distance/medium physically — the multi-mode/single-mode distinction in this lab is a *design exercise* that Packet Tracer enforces visually but GNS3 does not. Use the GNS3 build to practice addressing and routing; use Packet Tracer (or the manual reasoning in Section 6) for the cable-selection exercise itself.
 
----
-
-## 8. Common Mistakes in Multi-Site Routing
-
-| Mistake | Symptom | Fix |
-|---------|---------|-----|
-| **Asymmetric routing** | NY→SGP works, SGP→NY fails | Ensure all routers have reverse routes (R3-SGP needs route to 192.168.10.0/24) |
-| **Forgot route on one router** | 2 out of 3 pings fail | Verify all routers have identical route structure |
-| **Wrong next-hop** | Packets go to wrong firewall | Double-check firewall IP (e.g., 192.168.300.1 for R3-SGP, not 192.168.100.1) |
-| **Default route too broad** | External traffic routed internally | Ensure `0.0.0.0/0` points to firewall, not another router |
-| **Subnet overlap** | Unpredictable routing behavior | Use unique subnets; never reuse 192.168.10.0/24 in multiple locations |
-| **Missing NAT rule on FW3** | Singapore traffic doesn't leave firewall | Add NAT rule: Source 192.168.30.x → NAT to 203.0.113.10 |
-
----
-
-## 9. Design Questions
-
-1. **Why must every router know about every subnet in a static routing environment?**
-
-   Answer: Each router independently decides where to forward each packet. If R1-NY doesn't know the route to 192.168.30.0/24, it can't forward traffic there.
-
-2. **What happens if you misconfigure R3-SGP to have `ip route 0.0.0.0/0 192.168.200.1` instead of `192.168.300.1`?**
-
-   Answer: All traffic from Singapore goes to the wrong firewall (FW2-TKY instead of FW3-SGP). Packets destined for NY/Tokyo would work accidentally, but internet traffic fails.
-
-3. **At what number of branches would you switch from static to dynamic routing?**
-
-   Answer: Typically 5–10 branches. Rule of thumb: If you can't remember all routes in your head, use OSPF.
-
----
-
-## 10. Stretch Goals
-
-1. **Add a 4th branch (London)** and verify all inter-site pings succeed
-2. **Implement route summarization** (combine 192.168.10-20.0/24 into 192.168.0.0/16)
-3. **Configure OSPF instead of static routes** (preview of Day 07) and observe automatic convergence
-4. **Simulate link failure** (disable FW1-NYC) and observe how traffic needs manual intervention (OSPF would re-route automatically)
-
----
-
-## 11. Key Concepts Reinforced
-
-| Concept | Day 01 | Day 02 Expansion |
-|---------|--------|-----------------|
-| **Routing** | Two branches, simple paths | Three branches, multiple paths, scaling limits |
-| **Route verification** | `show ip route` on one router | Verify consistency across all routers |
-| **Firewall placement** | Two firewalls (perimeter + internal) | Three firewalls; each handles their region's traffic |
-| **Troubleshooting** | Check one route; fix it | Systematically verify all routes; identify asymmetry |
-
----
-
-## 12. Conclusion
-
-Day 02 teaches the **limits of manual routing**. Static routes scale to ~5 branches, but beyond that, **automation is essential**. Next week's OSPF labs (Day 07+) show how routers can **automatically discover and maintain routes**.
-
-**Key Takeaway:** Understand what static routing does well (simple, predictable) and where it falls short (scalability, failover), so you appreciate why dynamic routing exists.
-
----
-
-**Lab Documentation Version:** 1.0  
-**Last Updated:** 2026-08-30  
-**Author:** CCNA Labs Team  
-**Status:** Complete
+See [`GNS3/README.md`](GNS3/README.md) for how to run the build script.

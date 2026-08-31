@@ -1,507 +1,117 @@
-# Day 02 — Basic Routing & Static Routes
+# Day 02 Practice Lab — Connecting Network Devices (Self-Guided)
 
-## Practice Lab: Three-Branch Network Build & Configuration
-
----
-
-## 1. Introduction
-
-This practice lab builds on Day 01 by adding a **third branch (Singapore)** to the two-branch topology. You'll learn hands-on:
-
-- How to add routes to a new site on all existing routers
-- How to configure the new Singapore router (R3-SGP) with reverse routes
-- How to verify connectivity across three continents
-- How to troubleshoot asymmetric routing (one-way connectivity)
-
-**Time:** 2–3 hours  
-**Format:** Step-by-step configuration + verification
+This is the **no-answers companion** to `Day-02-Lab-Manual.md`. It gives you the same business requirements and topology, but withholds cable-selection answers, the addressing plan, and CLI commands — you derive them yourself. Only check the full manual after a genuine attempt.
 
 ---
 
-## 2. Topology Extension
+## 0. Before You Start
 
-**From Day 01:** You have NY and Tokyo branches working.
-
-**Today's Addition:** Singapore branch (192.168.30.0/24) with:
-- Router R3-SGP (192.168.30.1)
-- Switch SW3 (VLAN 30)
-- End devices SGP1 (192.168.30.50) and SGP2 (192.168.30.51)
-- Firewall FW3-SGP (192.168.300.1 inside, 203.0.113.10 outside)
+| Field | Value |
+|---|---|
+| **Time budget** | 2–3 hours. |
+| **What you'll need** | Packet Tracer (or your GNS3 build), pencil/spreadsheet for your addressing plan. Don't have the full manual open while attempting each section. |
 
 ---
 
-## 3. Configuration Walkthrough
+## 1. The Brief
 
-### 3.1 Step 1: Update R1-NY with Singapore Route
+> Your company has two branch sites. Site A has two routers (R1, R2), four switches, and two PCs. Site B has two routers (R3, R4), four switches, a PC, and a server. R1 and R2 are 50 meters apart. R3 and R4 are 250 meters apart. R1 and R3 (the two sites) are 3 kilometers apart. Everything within a site connects through a standard switch fabric down to the end devices.
 
-**Current state:** R1-NY only knows about Tokyo (192.168.20.0/24).
+### Your task
 
-**Task:** Add a route to Singapore.
-
-**On R1-NY:**
-```
-vyos@vyos:~$ configure
-[edit]
-vyos@vyos# set protocols static route 192.168.30.0/24 next-hop 192.168.100.1
-
-! This tells R1-NY: "If you see a packet destined for 192.168.30.x, send it to 192.168.100.1 (FW1-NYC)"
-
-vyos@vyos# commit
-vyos@vyos# save
-vyos@vyos# exit
-
-vyos@vyos:~$ show ip route | grep 192.168.30
-S   192.168.30.0/24 [210/0] via 192.168.100.1, eth1
-
-! Verify: Route is installed and points to FW1-NYC
-```
-
-**Explanation:** R1-NY trusts FW1-NYC to know how to reach Singapore. FW1-NYC will forward the packet to ISP-RTR, which forwards to FW3-SGP.
+- [ ] Sketch both site topologies from the device list alone — don't copy Section 3 of the manual.
+- [ ] For each of the three router-to-router distances given, decide: copper, multi-mode fiber, or single-mode fiber? Write your reasoning for each before checking anything.
 
 ---
 
-### 3.2 Step 2: Update R2-TKY with Singapore Route
+## 2. Cable Selection — Work It Out
 
-**On R2-TKY:**
-```
-vyos@vyos:~$ configure
-[edit]
-vyos@vyos# set protocols static route 192.168.30.0/24 next-hop 192.168.200.1
+Answer these from first principles, not by looking anything up in the manual:
 
-! This tells R2-TKY: "If you see a packet destined for 192.168.30.x, send it to 192.168.200.1 (FW2-TKY)"
+1. What is the rule for choosing straight-through vs. crossover cable? State it in terms of "like" vs. "unlike" devices, and give 3 example device pairs for each.
+2. Copper Ethernet is reliable up to approximately what distance? What happens electrically beyond that distance that makes fiber necessary?
+3. What is the core physical difference between multi-mode and single-mode fiber that explains why single-mode goes farther?
+4. For each of the following, pick copper / multi-mode / single-mode and justify in one sentence:
+   - Router to switch, 3 meters
+   - Switch to switch, 15 meters
+   - Building to building, 400 meters
+   - Site to site, 3 kilometers
+   - Data center row to row, 30 meters
 
-vyos@vyos# commit
-vyos@vyos# exit
-
-vyos@vyos:~$ show ip route | grep 192.168.30
-S   192.168.30.0/24 [210/0] via 192.168.200.1, eth1
-```
-
----
-
-### 3.3 Step 3: Configure R3-SGP (New Singapore Router)
-
-**On R3-SGP (new node, first time):**
-
-```
-vyos@vyos:~$ configure
-[edit]
-
-! Configure LAN interface (to SW3)
-vyos@vyos# set interfaces ethernet eth0 description "Singapore-LAN-to-SW3"
-vyos@vyos# set interfaces ethernet eth0 address 192.168.30.1/24
-
-! Configure transit interface (to FW3-SGP)
-vyos@vyos# set interfaces ethernet eth1 description "Singapore-Transit-to-FW3"
-vyos@vyos# set interfaces ethernet eth1 address 192.168.300.2/30
-
-! Route to NY (via FW3-SGP)
-vyos@vyos# set protocols static route 192.168.10.0/24 next-hop 192.168.300.1
-
-! Route to Tokyo (via FW3-SGP)
-vyos@vyos# set protocols static route 192.168.20.0/24 next-hop 192.168.300.1
-
-! Default route (for internet access)
-vyos@vyos# set protocols static route 0.0.0.0/0 next-hop 192.168.300.1
-
-vyos@vyos# commit
-vyos@vyos# save
-vyos@vyos# exit
-
-! Verify all routes are installed
-vyos@vyos:~$ show ip route
-S   0.0.0.0/0 [210/0] via 192.168.300.1, eth1
-S   192.168.10.0/24 [210/0] via 192.168.300.1, eth1
-S   192.168.20.0/24 [210/0] via 192.168.300.1, eth1
-C>* 192.168.30.0/24 [0/0] via 192.168.30.1, eth0
-C>* 192.168.300.0/30 [0/0] via 192.168.300.2, eth1
-```
-
-**Critical Point:** R3-SGP has **reverse routes** to both NY and Tokyo. This is essential for return traffic.
+Only after answering all of the above, check Section 6 of the full manual.
 
 ---
 
-### 3.4 Step 4: Update ISP-RTR with Singapore Route
+## 3. Design Your Own IP Addressing Plan
 
-**On ISP-RTR:**
+**Constraints:**
 
-```
-vyos@vyos:~$ configure
-[edit]
+- Each site's LAN needs a `/24` from private address space.
+- Every router-to-router point-to-point link (regardless of medium) should use the smallest subnet that fits exactly 2 hosts.
 
-! Add third Ethernet interface (to FW3-SGP)
-vyos@vyos# set interfaces ethernet eth2 description "ISP-to-FW3-SGP"
-vyos@vyos# set interfaces ethernet eth2 address 203.0.113.9/30
+### Your task
 
-! Route to Singapore (via FW3-SGP)
-vyos@vyos# set protocols static route 192.168.30.0/24 next-hop 203.0.113.10
+1. Choose two different `/24`s for the two site LANs.
+2. For each of the 3 router-to-router links, calculate by hand: how many host bits does exactly 2 usable addresses require? What prefix length results? Derive the dotted-decimal mask from binary.
+3. For one of your `/30` links, write out the network address, first usable host, last usable host, and broadcast address.
+4. Build a full device address table (Device / Interface / IP / Mask / Connects To) for all 12 addressed devices (4 routers + 2 PCs + 1 server, with routers having 2 interfaces each).
+5. Decide which router needs the most static routes, and why — think about topology shape (who's the "hub"?), not just device count.
 
-vyos@vyos# commit
-vyos@vyos# exit
-
-vyos@vyos:~$ show ip route
-S   192.168.10.0/24 [210/0] via 203.0.113.2, eth0
-S   192.168.20.0/24 [210/0] via 203.0.113.6, eth1
-S   192.168.30.0/24 [210/0] via 203.0.113.10, eth2
-C>* 203.0.113.0/30 [0/0] via 203.0.113.1, eth0
-C>* 203.0.113.4/30 [0/0] via 203.0.113.5, eth1
-C>* 203.0.113.8/30 [0/0] via 203.0.113.9, eth2
-```
-
-**Explanation:** ISP-RTR now has three WAN segments (eth0, eth1, eth2) and three destination routes (NY, Tokyo, Singapore).
+Compare against Section 4 of the full manual only after finishing all 5 steps.
 
 ---
 
-### 3.5 Step 5: Configure SW3 (Singapore Switch)
+## 4. Configure — Prompts Only
 
-**On SW3:**
+### 4.1 Cabling
+- [ ] Cable both sites' switch fabrics using your Section 2 answers.
+- [ ] Cable all three router-to-router links with the correct medium — remember you may need to swap a router's interface module before a fiber cable will even attach in Packet Tracer.
 
-```
-Switch> enable
-Switch# configure terminal
+### 4.2 Routers
+- [ ] Hostname each router.
+- [ ] Configure each router's LAN-facing and inter-router interfaces with your Section 3 addressing plan. Don't forget the one command every fresh interface needs before it will pass traffic.
+- [ ] Work out which router in this topology needs specific routes to *both* remote LANs, and which routers only need a single default route. Configure accordingly.
 
-! Create VLAN 30 for Singapore
-Switch(config)# vlan 30
-Switch(config-vlan)# name Singapore-LAN
-Switch(config-vlan)# exit
-
-! Configure SVI for VLAN 30 (switch's IP on LAN)
-Switch(config)# interface vlan 30
-Switch(config-if)# ip address 192.168.30.2 255.255.255.0
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-! Configure trunk to R3-SGP
-Switch(config)# interface GigabitEthernet0/1
-Switch(config-if)# switchport mode trunk
-Switch(config-if)# switchport trunk allowed vlan 1,30
-Switch(config-if)# switchport trunk native vlan 1
-Switch(config-if)# description Uplink-to-R3-SGP
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-! Configure access port for SGP1
-Switch(config)# interface FastEthernet0/2
-Switch(config-if)# switchport mode access
-Switch(config-if)# switchport access vlan 30
-Switch(config-if)# description SGP1-Access
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-! Configure access port for SGP2
-Switch(config)# interface FastEthernet0/3
-Switch(config-if)# switchport mode access
-Switch(config-if)# switchport access vlan 30
-Switch(config-if)# description SGP2-Access
-Switch(config-if)# no shutdown
-Switch(config-if)# exit
-
-! Default gateway for switch management
-Switch(config)# ip default-gateway 192.168.30.1
-Switch(config)# exit
-
-! Verify
-Switch# show vlan brief | grep Singapore
-30   Singapore-LAN                    active    Fa0/2, Fa0/3, Gi0/1(t)
-```
+### 4.3 End devices
+- [ ] Assign IP/mask/gateway to each PC and the server per your plan.
 
 ---
 
-### 3.6 Step 6: Configure FW3-SGP (Singapore Firewall)
+## 5. Verify — Predict First
 
-**On FW3-SGP (pfSense web UI):**
-
-1. **Go to Interfaces > Assignments**
-   - Click to assign em0 as LAN
-   - Click to assign em1 as WAN
-
-2. **Go to Interfaces > LAN**
-   - IPv4 Address: `192.168.300.1`
-   - IPv4 Subnet: `30`
-   - Click **Save & Apply**
-
-3. **Go to Interfaces > WAN**
-   - IPv4 Address: `203.0.113.10`
-   - IPv4 Subnet: `30`
-   - IPv4 Gateway: `203.0.113.9`
-   - Click **Save & Apply**
-
-4. **Go to Firewall > NAT > Outbound**
-   - Mode: `Automatic (Hybrid Outbound NAT rule generation)`
-   - Click **Save**
-
-5. **Go to Firewall > Rules > LAN**
-   - Add rule:
-     - **Action:** Pass
-     - **Interface:** LAN
-     - **Source:** 192.168.30.0/24
-     - **Destination:** Any
-     - **Description:** "Allow all LAN outbound"
-   - Add rule:
-     - **Action:** Pass
-     - **Interface:** LAN
-     - **Source:** 192.168.10.0/24
-     - **Destination:** 192.168.30.0/24
-     - **Description:** "Allow NY to Singapore"
-   - Add rule:
-     - **Action:** Pass
-     - **Interface:** LAN
-     - **Source:** 192.168.20.0/24
-     - **Destination:** 192.168.30.0/24
-     - **Description:** "Allow Tokyo to Singapore"
-   - Click **Save & Apply**
-
-6. **Verify:**
-   - Go to **Diagnostics > Ping**
-   - Ping `203.0.113.9` (should reply; that's the ISP side)
-   - Ping `192.168.300.1` (should reply; that's itself)
+- [ ] Before running it, predict what `show ip interface brief` should show on each router. Then run it.
+- [ ] Before running it, predict what `show interfaces` on a fiber-connected interface should report for `Media type`. Run it and compare.
+- [ ] Predict a full ping matrix (at least 5 source/destination pairs, including one crossing both fiber links) before testing.
+- [ ] What specific line in `show interfaces` output tells you a fiber link is up at Layer 1 versus just administratively enabled? Find it by testing a working link, then (if your platform allows) deliberately breaking one strand and comparing.
 
 ---
 
-### 3.7 Step 7: Configure SGP1 & SGP2 (Singapore End Devices)
+## 6. Explain Your Design
 
-**On SGP1 (Alpine Linux):**
-
-```
-localhost:~# ip address add 192.168.30.50/24 dev eth0
-localhost:~# ip link set eth0 up
-localhost:~# ip route add default via 192.168.30.1
-
-! Persist configuration
-localhost:~# cat > /etc/network/interfaces << EOF
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-    address 192.168.30.50
-    netmask 255.255.255.0
-    gateway 192.168.30.1
-EOF
-
-localhost:~# service networking restart
-```
-
-**On SGP2:**
-
-```
-localhost:~# ip address add 192.168.30.51/24 dev eth0
-localhost:~# ip link set eth0 up
-localhost:~# ip route add default via 192.168.30.1
-
-! Persist
-localhost:~# cat > /etc/network/interfaces << EOF
-auto lo
-iface lo inet loopback
-
-auto eth0
-iface eth0 inet static
-    address 192.168.30.51
-    netmask 255.255.255.0
-    gateway 192.168.30.1
-EOF
-
-localhost:~# service networking restart
-```
+1. Why is "fiber everywhere" the wrong default answer, even though fiber technically works at short distances too?
+2. Why are single-mode and multi-mode fiber different products instead of one universal fiber type?
+3. Why does subnet size have nothing to do with cable distance? Give a one-sentence explanation you could give a non-technical manager.
+4. Which router in your topology ended up with the most routing configuration, and why does its position in the topology explain that?
 
 ---
 
-## 4. Verification Phase
+## 7. Troubleshoot Yourself
 
-### 4.1 Phase 1: Local Connectivity (Singapore Only)
+Break your lab in 3 of these ways, diagnose using only `show` commands, then fix:
 
-**Test 1: SGP1 → SGP2 (same LAN)**
-```
-SGP1# ping -c 4 192.168.30.51
-PING 192.168.30.51 (192.168.30.51) 56(84) bytes of data.
-64 bytes from 192.168.30.51: icmp_seq=1 ttl=64 time=2.123 ms
-64 bytes from 192.168.30.51: icmp_seq=2 ttl=64 time=1.987 ms
-64 bytes from 192.168.30.51: icmp_seq=3 ttl=64 time=2.045 ms
-64 bytes from 192.168.30.51: icmp_seq=4 ttl=64 time=2.034 ms
---- 192.168.30.51 statistics ---
-4 packets transmitted, 4 received, 0% packet loss, time 3003ms
-```
-
-**Expected:** ✓ Local LAN ping succeeds
-
-**Test 2: SGP1 → R3-SGP (gateway)**
-```
-SGP1# ping -c 4 192.168.30.1
-PING 192.168.30.1 (192.168.30.1) 56(84) bytes of data.
-64 bytes from 192.168.30.1: icmp_seq=1 ttl=64 time=1.234 ms
-...
-```
-
-**Expected:** ✓ Gateway reachable
+- Assign the wrong cable type to a router-switch link (if your platform allows forcing it).
+- Remove `no shutdown` from a fiber interface.
+- Delete a static route from the hub router.
+- Swap the subnet mask on one end of a `/30` link so it no longer matches the other end.
 
 ---
 
-### 4.2 Phase 2: Inter-Site Connectivity (Singapore ↔ NY)
+## 8. Self-Check
 
-**Test 1: SGP1 → PC0 (New York)**
-```
-SGP1# ping -c 4 192.168.10.50
-PING 192.168.10.50 (192.168.10.50) 56(84) bytes of data.
-64 bytes from 192.168.10.50: icmp_seq=1 ttl=57 time=15.234 ms
-64 bytes from 192.168.10.50: icmp_seq=2 ttl=57 time=14.876 ms
-64 bytes from 192.168.10.50: icmp_seq=3 ttl=57 time=15.123 ms
-64 bytes from 192.168.10.50: icmp_seq=4 ttl=57 time=14.999 ms
---- 192.168.10.50 statistics ---
-4 packets transmitted, 4 received, 0% packet loss, time 3004ms
-rtt min/avg/max/stddev = 14.876/15.058/15.234/0.129 ms
-```
+- [ ] I derived the straight-through/crossover rule and the copper/multi-mode/single-mode distance rule from first principles before checking the manual.
+- [ ] I built the addressing plan and derived at least one mask from binary by hand.
+- [ ] I correctly identified which router needed the most routes and why.
+- [ ] I predicted verification output before running each command.
+- [ ] I broke and fixed at least 3 things without looking at the troubleshooting table first.
 
-**Expected:** ✓ Inter-site ping succeeds (high latency is normal for WAN)
-
-**Test 2: PC0 → SGP1 (Return Path)**
-```
-PC0# ping -c 4 192.168.30.50
-PING 192.168.30.50 (192.168.30.50) 56(84) bytes of data.
-64 bytes from 192.168.30.50: icmp_seq=1 ttl=57 time=15.345 ms
-...
-```
-
-**Expected:** ✓ Return path also succeeds (symmetric routing)
-
----
-
-### 4.3 Phase 3: Three-Way Connectivity (NY ↔ Tokyo ↔ Singapore)
-
-**Test 1: Tokyo → Singapore**
-```
-SRV1# ping -c 4 192.168.30.10
-PING 192.168.30.10 (192.168.30.10) 56(84) bytes of data.
-64 bytes from 192.168.30.10: icmp_seq=1 ttl=57 time=20.123 ms
-...
-```
-
-**Expected:** ✓ Tokyo can reach Singapore (via R2 → FW2 → ISP → FW3 → R3)
-
-**Test 2: Traceroute (NY → Singapore)**
-```
-PC0# traceroute -m 15 192.168.30.50
-traceroute to 192.168.30.50 (192.168.30.50), 15 hops max, 60 byte packets
- 1  192.168.10.1 (192.168.10.1)  2.345 ms       # R1-NY
- 2  192.168.100.1 (192.168.100.1)  3.456 ms     # FW1-NYC inside
- 3  203.0.113.1 (203.0.113.1)  5.678 ms         # ISP-RTR
- 4  203.0.113.9 (203.0.113.9)  7.890 ms         # FW3-SGP outside
- 5  192.168.300.1 (192.168.300.1)  8.901 ms     # FW3-SGP inside
- 6  192.168.30.1 (192.168.30.1)  9.234 ms       # R3-SGP
- 7  192.168.30.50 (192.168.30.50)  10.567 ms    # SGP1
-```
-
-**Expected:** ✓ Full path visible; all hops reachable
-
----
-
-## 5. Troubleshooting Scenarios
-
-### Scenario 1: SGP1 Cannot Reach PC0 (Asymmetric Routing)
-
-**Symptoms:**
-- SGP1 → PC0: Timeout (no response)
-- PC0 → SGP1: Succeeds
-
-**Diagnosis (Check R1-NY):**
-```
-R1-NY# show ip route | grep 192.168.30
-! No output = R1-NY doesn't know about Singapore!
-```
-
-**Root Cause:** You forgot to add the route to Singapore on R1-NY (Step 1).
-
-**Fix:**
-```
-R1-NY# configure
-[edit]
-R1-NY# set protocols static route 192.168.30.0/24 next-hop 192.168.100.1
-R1-NY# commit
-```
-
-**Verify:**
-```
-SGP1# ping -c 4 192.168.10.50
-! Now succeeds
-```
-
----
-
-### Scenario 2: SGP1 → PC0 Fails; PC0 → SGP1 Succeeds (Classic Asymmetry)
-
-**Symptoms:**
-- PC0# ping 192.168.30.50 → ✓ Works
-- SGP1# ping 192.168.10.50 → ✗ Timeout
-
-**Diagnosis (Check R3-SGP):**
-```
-R3-SGP# show ip route | grep 192.168.10
-S   192.168.10.0/24 [210/0] via 192.168.300.1, eth1
-! Route exists, so that's not it
-```
-
-**Check ISP-RTR:**
-```
-ISP-RTR# show ip route | grep 192.168.30
-S   192.168.30.0/24 [210/0] via 203.0.113.10, eth2
-! Route exists here too
-```
-
-**Check FW3-SGP firewall rules:**
-```
-pfSense (FW3-SGP) → Firewall > Rules > LAN
-! Look for rule allowing 192.168.10.0/24 → 192.168.30.0/24
-```
-
-**Root Cause:** FW3-SGP blocks return traffic (missing firewall rule).
-
-**Fix:**
-1. Go to FW3-SGP web UI
-2. **Firewall > Rules > LAN**
-3. Add rule:
-   - **Source:** 192.168.10.0/24
-   - **Destination:** 192.168.30.0/24
-   - **Action:** Pass
-
-**Verify:**
-```
-SGP1# ping -c 4 192.168.10.50
-! Now succeeds
-```
-
----
-
-## 6. Self-Check Checklist
-
-After completing this practice lab:
-
-- [ ] I added routes to Singapore on R1-NY and R2-TKY
-- [ ] I configured R3-SGP with reverse routes to NY and Tokyo
-- [ ] I updated ISP-RTR with Singapore route
-- [ ] I configured SW3 with VLAN 30 and trunk/access ports
-- [ ] I configured FW3-SGP with inside/outside interfaces and NAT
-- [ ] I assigned IPs to SGP1 and SGP2
-- [ ] I verified local Singapore connectivity (SGP1 ↔ SGP2)
-- [ ] I verified inter-site connectivity (NY ↔ Singapore ↔ Tokyo)
-- [ ] I traced the full path from NY to Singapore
-- [ ] I diagnosed and fixed at least one asymmetric routing issue
-- [ ] All three branches can reach all other branches
-
-**Score:** 11+ = Mastered; 9–10 = Proficient; 7–8 = Competent; <7 = Review
-
----
-
-## 7. Conclusion
-
-This practice lab reinforced that **static routing requires explicit configuration on every router**. Adding Singapore meant updating routes on:
-- R1-NY (add route to 192.168.30.0/24)
-- R2-TKY (add route to 192.168.30.0/24)
-- R3-SGP (add routes to 192.168.10.0/24 and 192.168.20.0/24)
-- ISP-RTR (add route to 192.168.30.0/24)
-
-This is manageable for 3 branches, but imagine 10 branches—every time you add a new site, you update 10 routers. **Day 07 will introduce OSPF**, where routers automatically discover routes. No manual configuration needed!
-
----
-
-**Practice Lab Documentation Version:** 1.0  
-**Last Updated:** 2026-08-30  
-**Time to Complete:** 2–3 hours
+Once done, open `Day-02-Lab-Manual.md` and diff your work against Sections 4, 6, 7, and 9.
